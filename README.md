@@ -20,7 +20,7 @@ Licence: MIT Licence
 Original Author: Thomas Voegtlin
 Original Port Maintainer: Hector Chu
 Language: Python (>= 3.10)
-Repository: https://github.com/AjaxPop/MWEB-Vault-
+Repository: https://github.com/ltc-electrum/electrum-ltc
 ```
 
 ## SPV Merkle-Proof Hardening
