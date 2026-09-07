@@ -1,0 +1,52 @@
+name: Import MWEB Vault
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-mweb-vault.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out destination
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone MWEB Vault source snapshot
+        run: |
+          git clone --depth 1 --branch mweb https://github.com/AjaxPop/Mweb_electrum_ltc.git /tmp/mweb-vault-source
+          cd /tmp/mweb-vault-source
+          git fetch --depth 1 origin fix/spv-cve-2012-2459
+
+      - name: Import standalone codebase
+        run: |
+          rsync -a --delete --exclude='.git/' /tmp/mweb-vault-source/ ./
+
+          # Overlay the SPV Merkle-proof hardening changes from the security branch.
+          git -C /tmp/mweb-vault-source show FETCH_HEAD:electrum/verifier.py > electrum/verifier.py
+          git -C /tmp/mweb-vault-source show FETCH_HEAD:tests/test_verifier.py > tests/test_verifier.py
+
+          # Point project-facing repository references at the standalone repository.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('README.md')
+          text = p.read_text()
+          text = text.replace('https://github.com/AjaxPop/Mweb_electrum_ltc', 'https://github.com/AjaxPop/MWEB-Vault-')
+          text = text.replace('git clone https://github.com/AjaxPop/Mweb_electrum_ltc.git', 'git clone https://github.com/AjaxPop/MWEB-Vault-.git')
+          text = text.replace('$ cd Mweb_electrum_ltc', '$ cd MWEB-Vault-')
+          p.write_text(text)
+          PY
+
+      - name: Commit imported files
+        run: |
+          git config user.name "AjaxPop"
+          git config user.email "54447040+AjaxPop@users.noreply.github.com"
+          git add -A
+          git commit -m "Import standalone MWEB Vault codebase with SPV hardening"
+          git push origin main
