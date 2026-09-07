@@ -67,10 +67,10 @@ jobs:
         run: |
           python -c "import electrum; print('MWEB Vault import successful')"
 
-      - name: Run unit tests
-        run: |
-          pytest tests -vv --maxfail=1
-
       - name: Compile Python source
         run: |
           python -m compileall -q electrum
+
+      - name: Run unit tests
+        run: |
+          pytest tests -vv --maxfail=20
