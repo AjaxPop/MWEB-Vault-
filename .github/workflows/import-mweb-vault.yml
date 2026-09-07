@@ -18,27 +18,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Clone MWEB Vault source snapshot
+      - name: Download MWEB Vault source snapshot
         run: |
-          git clone --depth 1 --branch mweb https://github.com/AjaxPop/Mweb_electrum_ltc.git /tmp/mweb-vault-source
-          cd /tmp/mweb-vault-source
-          git fetch --depth 1 origin fix/spv-cve-2012-2459
+          mkdir -p /tmp/mweb-vault-source
+          curl -L --fail https://codeload.github.com/AjaxPop/Mweb_electrum_ltc/zip/refs/heads/mweb -o /tmp/mweb.zip
+          unzip -q /tmp/mweb.zip -d /tmp
+          SRC_DIR="$(find /tmp -maxdepth 1 -type d -name 'Mweb_electrum_ltc-*' | head -n1)"
+          cp -a "$SRC_DIR/." /tmp/mweb-vault-source/
+
+          curl -L --fail https://raw.githubusercontent.com/AjaxPop/Mweb_electrum_ltc/fix/spv-cve-2012-2459/electrum/verifier.py -o /tmp/verifier.py
+          curl -L --fail https://raw.githubusercontent.com/AjaxPop/Mweb_electrum_ltc/fix/spv-cve-2012-2459/tests/test_verifier.py -o /tmp/test_verifier.py
 
       - name: Import standalone codebase
         run: |
-          rsync -a --delete --exclude='.git/' /tmp/mweb-vault-source/ ./
+          rsync -a --delete --exclude='.git/' --exclude='.github/workflows/import-mweb-vault.yml' /tmp/mweb-vault-source/ ./
 
-          # Overlay the SPV Merkle-proof hardening changes from the security branch.
-          git -C /tmp/mweb-vault-source show FETCH_HEAD:electrum/verifier.py > electrum/verifier.py
-          git -C /tmp/mweb-vault-source show FETCH_HEAD:tests/test_verifier.py > tests/test_verifier.py
+          cp /tmp/verifier.py electrum/verifier.py
+          cp /tmp/test_verifier.py tests/test_verifier.py
 
-          # Point project-facing repository references at the standalone repository.
           python3 - <<'PY'
           from pathlib import Path
           p = Path('README.md')
           text = p.read_text()
           text = text.replace('https://github.com/AjaxPop/Mweb_electrum_ltc', 'https://github.com/AjaxPop/MWEB-Vault-')
-          text = text.replace('git clone https://github.com/AjaxPop/Mweb_electrum_ltc.git', 'git clone https://github.com/AjaxPop/MWEB-Vault-.git')
           text = text.replace('$ cd Mweb_electrum_ltc', '$ cd MWEB-Vault-')
           p.write_text(text)
           PY
