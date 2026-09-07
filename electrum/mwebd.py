@@ -64,7 +64,7 @@ def stubs():
         proxy_args = config.NETWORK_PROXY.split(':')
         if proxy_user := config.NETWORK_PROXY_USER:
             proxy_user += f':{config.NETWORK_PROXY_PASSWORD}@'
-       proxy = f"{proxy_args[0]}://{proxy_user or ''}{proxy_args[1]}:{proxy_args[2]}"
+        proxy = f"{proxy_args[0]}://{proxy_user or ''}{proxy_args[1]}:{proxy_args[2]}"
     with lock:
         if not port:
             port = libmwebd().Start(strgo(chain.NET_NAME), strgo(data_dir), strgo(proxy))
