@@ -23,13 +23,6 @@ Language: Python (>= 3.10)
 Repository: https://github.com/ltc-electrum/electrum-ltc
 ```
 
-## SPV Merkle-Proof Hardening
-
-This repository includes the saved patch tooling and documentation for the CVE-2012-2459-style left-sibling duplicate Merkle-proof hardening work.
-
-- `open_electrum_ltc_spv_pr.sh` applies the verifier change and regression tests to an Electrum-LTC source tree.
-- `electrum_ltc_spv_pr_body.md` documents the security rationale, upstream references, and testing approach.
-
 ## License
 
 MWEB Vault is distributed under the **MIT License**, consistent with the Electrum-LTC codebase from which it was forked.
