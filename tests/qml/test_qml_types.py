@@ -101,7 +101,7 @@ class TestTypes(QETestCase):
     @qt_test
     def test_qeamount_frominvoice(self):
         amount_sat = 10_000
-        outputs = [PartialTxOutput.from_address_and_value('bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293', amount_sat)]
+        outputs = [PartialTxOutput.from_address_and_value('ltc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqpraswap', amount_sat)]
         invoice = Invoice(
             amount_msat=amount_sat * 1000,
             message="mymsg",
@@ -116,7 +116,7 @@ class TestTypes(QETestCase):
         self.assertEqual(10_000_000, a.msatsInt)
         self.assertFalse(a.isMax)
 
-        outputs = [PartialTxOutput.from_address_and_value('bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293', '!')]
+        outputs = [PartialTxOutput.from_address_and_value('ltc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqpraswap', '!')]
         invoice = Invoice(
             amount_msat='!',
             message="mymsg",
