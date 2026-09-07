@@ -42,6 +42,10 @@ jobs:
         run: |
           ./contrib/make_libsecp256k1.sh
 
+      - name: Configure libsecp256k1 runtime path
+        run: |
+          echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/electrum${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+
       - name: Install test dependencies
         env:
           ELECTRUM_ECC_DONT_COMPILE: "1"
