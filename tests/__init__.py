@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, List
 
 import electrum
 import electrum.logging
-from electrum import constants
+from electrum import constants, segwit_addr
 from electrum import util
 from electrum.util import OldTaskGroup
 from electrum.logging import Logger
@@ -138,9 +138,38 @@ def as_testnet(func):
     return run_test
 
 
+def _convert_legacy_testnet_address_import(text):
+    """Re-encode inherited Bitcoin-testnet address-only wallet imports for Litecoin testnet.
+
+    Electrum-LTC inherited a few tests that import whitespace-separated ``tb1`` addresses.
+    The witness programs are network-independent; only the human-readable prefix and checksum
+    need to be re-encoded. Keep this deliberately narrow so seeds, keys, negative vectors, and
+    mixed input are never rewritten behind a test's back.
+    """
+    if not isinstance(text, str) or constants.net.SEGWIT_HRP != 'tltc':
+        return text
+    tokens = text.split()
+    if not tokens or not all(token.lower().startswith('tb1') for token in tokens):
+        return text
+    converted = []
+    for token in tokens:
+        witver, witprog = segwit_addr.decode_segwit_address('tb', token)
+        if witprog is None:
+            return text
+        address = segwit_addr.encode_segwit_address('tltc', witver, bytes(witprog))
+        if address is None:
+            return text
+        converted.append(address)
+    return ' '.join(converted)
+
+
 @functools.wraps(restore_wallet_from_text)
 def restore_wallet_from_text__for_unittest(*args, gap_limit=2, gap_limit_for_change=1, **kwargs):
     """much lower default gap limits (to save compute time)"""
+    if args:
+        args = (_convert_legacy_testnet_address_import(args[0]), *args[1:])
+    elif 'text' in kwargs:
+        kwargs['text'] = _convert_legacy_testnet_address_import(kwargs['text'])
     return restore_wallet_from_text(
         *args,
         gap_limit=gap_limit,
