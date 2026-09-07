@@ -6,6 +6,7 @@ import sys
 from electrum import constants, segwit_addr
 from electrum.bitcoin import address_to_script
 from electrum.fee_policy import FixedFeePolicy
+from electrum.mwebd import set_mwebd_config
 from electrum.simple_config import SimpleConfig
 from electrum.storage import WalletStorage
 from electrum.transaction import PartialTxOutput
@@ -29,6 +30,7 @@ class TestTimelockRecovery(ElectrumTestCase):
             'electrum_path': self.electrum_path,
             'testnet': True,
         })
+        set_mwebd_config(self.config)
 
         self.wallet_path = os.path.join(self.electrum_path, "timelock_recovery_wallet")
 
