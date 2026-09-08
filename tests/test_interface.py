@@ -394,7 +394,7 @@ class TestInterface(ElectrumTestCase):
             await w1.up_to_date_changed_event.wait()
         self.assertEqual(_get_active_server_session()._method_counts["blockchain.scripthash.get_history"], 1)
         self.assertEqual(
-            w1.adb.get_address_history("bcrt1qq2tmmcngng78nllq2pvrkchcdukemtj5jnxz44"),
+            w1.adb.get_address_history("rltc1qq2tmmcngng78nllq2pvrkchcdukemtj5v7utzt"),
             {funding_txid: 0})
         # mine funding tx
         await _get_active_server_session().mine_block(txids_mined=[funding_txid])
@@ -404,6 +404,6 @@ class TestInterface(ElectrumTestCase):
         # see if we managed to guess new history, and hence did not need to call get_history RPC
         self.assertEqual(_get_active_server_session()._method_counts["blockchain.scripthash.get_history"], 1)
         self.assertEqual(
-            w1.adb.get_address_history("bcrt1qq2tmmcngng78nllq2pvrkchcdukemtj5jnxz44"),
+            w1.adb.get_address_history("rltc1qq2tmmcngng78nllq2pvrkchcdukemtj5v7utzt"),
             {funding_txid: 7})
 
