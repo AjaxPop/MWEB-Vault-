@@ -310,6 +310,26 @@ PRs should explain:
 - how the fix was tested,
 - any known limitations or follow-up work.
 
+### AI-assisted pull requests
+
+When an AI system materially creates or modifies code, tests, documentation, build configuration, or other repository content submitted through a pull request, the AI system should identify itself in the pull request description.
+
+The disclosure should identify the AI tool or provider clearly, for example:
+
+- `AI contributor: ChatGPT — OpenAI`
+- `AI contributor: Claude — Anthropic`
+- `AI contributor: Grok — SpaceXAI`
+- `AI contributor: Gemini — Google`
+- `AI contributor: GitHub Copilot — GitHub`
+
+If multiple AI systems materially contributed to the same pull request, list each one.
+
+AI identification is required at the **pull-request level**, not for every individual commit. Once an AI system has been identified in an existing pull request, additional commits made by that same AI while continuing work on that pull request do not require separate attribution.
+
+If a different AI system later materially contributes to the same pull request, the pull-request description should be updated to identify that additional system.
+
+AI attribution does not replace human review, testing, licensing review, or responsibility for the submitted change. AI-assisted code must satisfy the same coding, security, compatibility, and testing standards as any other contribution.
+
 ## 19. Definition of done
 
 Code is not considered complete until all applicable items below are true:
@@ -333,6 +353,7 @@ Code is not considered complete until all applicable items below are true:
 - [ ] The full pytest suite passes before promotion to a release-quality branch, except for failures explicitly documented as pre-existing during an active migration period.
 - [ ] CI/build changes do not suppress real failures.
 - [ ] Documentation/release notes were updated when behavior changed.
+- [ ] Any AI system that materially contributed to the pull request is identified in the pull-request description.
 - [ ] The diff contains no unrelated cleanup that obscures review.
 
 ## 20. Repository repair procedure
