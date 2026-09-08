@@ -162,7 +162,7 @@ class TestUtil(ElectrumTestCase):
         from electrum.lnaddr import LnAddr, lnencode
 
         matching_address = 'tltc1qu5ua3szskclyd48wlfdwfd32j65phxy9apu6mk'
-        mismatching_address = 'tltc1qvu0c9xme0ul3gzx4nzqdgxsu25acuk9wc46pwf'
+        mismatching_address = 'tltc1qvu0c9xme0ul3gzx4nzqdgxsu25acuk9w4cs5zr'
         payment_hash = bytes.fromhex('11' * 32)
         privkey = bytes.fromhex('22' * 32)
         invoice_no_fallback = lnencode(
