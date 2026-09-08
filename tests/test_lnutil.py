@@ -2,7 +2,7 @@ import os
 import json
 from typing import Dict, List
 
-from electrum import bitcoin
+from electrum import bitcoin, constants
 from electrum.json_db import StoredDict
 from electrum.lnutil import (
     RevocationStore, get_per_commitment_secret_from_seed, make_offered_htlc, make_received_htlc, make_commitment,
@@ -1036,6 +1036,12 @@ class TestLNUtil(ElectrumTestCase):
 
     def test_lnworker_decode_channel_update_msg(self):
         msg_without_prefix = bytes.fromhex("439b71c8ddeff63004e4ff1f9764a57dcf20232b79d9d669aef0e31c42be8e44208f7d868d0133acb334047f30e9399dece226ccd98e5df5330adf7f356290516fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d619000000000008762700054a00005ef2cf9c0101009000000000000003e80000000000000001000000002367b880")
+        # Keep the inherited channel-update fields, but make the chain hash native to Litecoin.
+        msg_without_prefix = (
+            msg_without_prefix[:64]
+            + constants.net.rev_genesis_bytes()
+            + msg_without_prefix[96:]
+        )
         # good messages
         self.assertNotEqual(
             None,
@@ -1081,7 +1087,7 @@ class TestLNUtil(ElectrumTestCase):
                 is_initiator=True,
                 node_id=bfh('02bf82e22f99dcd7ac1de4aad5152ce48f0694c46ec582567f379e0adbf81e2d0f'),
                 privkey=bfh('7e634853dc47f0bc2f2e0d1054b302fcb414371ddbd889f29ba8aa4e8b62c772'),
-                host='lightning.electrum-ltc.org',
+                host='lightning.electrum.org',
                 port=9739,
                 channel_seed=bfh('ce9bad44ff8521d9f57fd202ad7cdedceb934f0056f42d0f3aa7a576b505332a'),
                 local_delay=1008,
