@@ -134,21 +134,24 @@ def convertbits(data: Iterable[int], frombits: int, tobits: int, pad: bool = Tru
 
 
 def decode_segwit_address(hrp: str, addr: Optional[str]) -> Tuple[Optional[int], Optional[Sequence[int]]]:
-    """Decode a segwit address."""
+    """Decode a segwit or MWEB address."""
     if addr is None:
         return (None, None)
-    # MWEB uses longer Bech32 payloads than BIP-173 permits. Keep the relaxed
-    # length handling scoped to the dedicated MWEB HRPs instead of weakening
-    # validation for normal ltc/tltc/rltc addresses.
-    encoding, hrpgot, data = bech32_decode(addr, ignore_long_length=hrp.endswith('mweb'))
+    is_mweb = hrp.endswith('mweb')
+    # MWEB uses longer Bech32 payloads than BIP-173 permits. Keep both the
+    # string-length and witness-program extensions scoped to MWEB HRPs so that
+    # ordinary ltc/tltc/rltc addresses retain BIP-173/BIP-350 validation.
+    encoding, hrpgot, data = bech32_decode(addr, ignore_long_length=is_mweb)
     if hrpgot != hrp:
         return (None, None)
     decoded = convertbits(data[1:], 5, 8, False)
-    if decoded is None or len(decoded) < 2 or len(decoded) > 66:
+    max_program_len = 66 if is_mweb else 40
+    if decoded is None or len(decoded) < 2 or len(decoded) > max_program_len:
         return (None, None)
     if data[0] > 16:
         return (None, None)
-    if data[0] == 0 and len(decoded) != 20 and len(decoded) != 32 and len(decoded) != 66:
+    valid_v0_lengths = (20, 32, 66) if is_mweb else (20, 32)
+    if data[0] == 0 and len(decoded) not in valid_v0_lengths:
         return (None, None)
     if encoding != (Encoding.BECH32 if data[0] in [0, 8, 9] else Encoding.BECH32M):
         return (None, None)
