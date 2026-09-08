@@ -40,7 +40,8 @@ OpenAI's Terms of Use state:
 > “As between you and OpenAI, and to the extent permitted by applicable law, you … own the Output. We hereby assign to you all our right, title, and interest, if any, in and to Output.”
 
 **OpenAI Terms of Use:** Updated October 23, 2024  
-**Archived copy retrieved September 7, 2026:**  
-https://web.archive.org/web/20260907212205/https://openai.com/en-GB/policies/oct-2024-row-terms/
+**Archived copy retrieved September 8, 2026:**  
+https://web.archive.org/web/20260908133836/https://openai.com/policies/row-terms-of-use/
+
 
 AI-generated or AI-assisted contributions incorporated into this repository remain subject to the project's MIT License and any applicable third-party license obligations.
