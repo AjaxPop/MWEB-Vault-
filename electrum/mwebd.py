@@ -54,7 +54,7 @@ def set_mwebd_config(cfg):
     config = cfg
 
 @lru_cache()
-def stubs():
+def target():
     global port
     chain = config.get_selected_chain()
     data_dir = os.path.join(config.electrum_path(), 'mweb')
@@ -68,13 +68,21 @@ def stubs():
     with lock:
         if not port:
             port = libmwebd().Start(strgo(chain.NET_NAME), strgo(data_dir), strgo(proxy))
-    target = f'unix://{data_dir}/mwebd.sock'
-    if port > 1: target = f'127.0.0.1:{port}'
-    return (RpcStub(grpc.insecure_channel(target)),
-            RpcStub(grpc.aio.insecure_channel(target)))
+    endpoint = f'unix://{data_dir}/mwebd.sock'
+    if port > 1:
+        endpoint = f'127.0.0.1:{port}'
+    return endpoint
 
-def stub(): return stubs()[0]
-def stub_async(): return stubs()[1]
+@lru_cache()
+def stub():
+    return RpcStub(grpc.insecure_channel(target()))
+
+def stub_async():
+    # grpc.aio channels are bound to the event loop they are created on.
+    # Do not cache an async stub globally, otherwise a later loop can inherit
+    # a channel from an already-closed loop (common in unit tests and possible
+    # during daemon lifecycle transitions).
+    return RpcStub(grpc.aio.insecure_channel(target()))
 
 def create(tx, keystore, fee_estimator, *, dry_run = True, password = None):
     scan_secret = spend_secret = bytes(32)
