@@ -1,0 +1,53 @@
+name: Apply PR4 wallet bump-fee fix
+
+on:
+  push:
+    branches:
+      - automation-pr4-wallet-fix
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ci-build-mwebd
+          fetch-depth: 0
+
+      - name: Apply guarded wallet fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("electrum/wallet.py")
+          text = path.read_text()
+          old = """                change_addrs=change_addrs,
+                fee_estimator_vb=fee_estimator,
+                dust_threshold=self.dust_threshold())"""
+          new = """                change_addrs=change_addrs,
+                keystore=self.keystore,
+                fee_estimator_vb=fee_estimator,
+                dust_threshold=self.dust_threshold())"""
+
+          if new in text:
+              raise SystemExit("bump-fee keystore fix is already present")
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f"expected exactly one bump-fee target, found {count}")
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Commit fix to PR 4 branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git diff --check
+          git add electrum/wallet.py
+          git commit -m "fix(wallet): pass keystore when bumping fees"
+          git push origin HEAD:ci-build-mwebd
