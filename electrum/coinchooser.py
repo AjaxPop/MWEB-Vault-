@@ -5,11 +5,10 @@
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation files
-# (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge,
-# publish, distribute, sublicense, and/or sell copies of the Software,
-# and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
+# (the "Software"), to deal in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 #
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
@@ -24,7 +23,7 @@
 # SOFTWARE.
 from collections import defaultdict
 from math import ceil, floor, log10
-from typing import NamedTuple, List, Callable, Sequence, Dict, Tuple, Mapping, Type, TYPE_CHECKING
+from typing import NamedTuple, List, Callable, Sequence, Dict, Tuple, Mapping, Type, TYPE_CHECKING, Optional
 from decimal import Decimal
 
 from .bitcoin import sha256, COIN, is_address, is_mweb_address
@@ -292,9 +291,9 @@ class CoinChooserBase(Logger):
             inputs: List[PartialTxInput],
             outputs: List[PartialTxOutput],
             change_addrs: Sequence[str],
-            keystore: KeyStore,
             fee_estimator_vb: Callable[[int | float | Decimal], int],
             dust_threshold: int,
+            keystore: Optional[KeyStore] = None,
             BIP69_sort: bool = True,
     ) -> PartialTransaction:
         """Select unspent coins to spend to pay outputs.  If the change is
@@ -306,7 +305,8 @@ class CoinChooserBase(Logger):
         inputs and outputs of the resulting transaction.
         `coins` are further UTXOs we can choose from.
 
-        Note: fee_estimator_vb expects virtual bytes
+        Note: fee_estimator_vb expects virtual bytes. The keystore is optional
+        for ordinary Litecoin coin selection; MWEB inputs/outputs require it.
         """
         # Deterministic randomness from coins
         utxos = [c.prevout.serialize_to_network() for c in coins]
@@ -355,6 +355,14 @@ class CoinChooserBase(Logger):
 
         def tx_from_buckets(buckets):
             tx, change = _tx_from_buckets(buckets)
+            has_mweb = (
+                any(is_mweb_address(x.address) for x in tx.outputs())
+                or any(bool(getattr(x, 'mweb_output_id', None)) for x in tx.inputs())
+            )
+            if keystore is None:
+                if has_mweb:
+                    raise ValueError("keystore is required for MWEB coin selection")
+                return tx, change
             base_change, tx._outputs = partition(lambda x: any(x is y for y in change)
                                        and not is_mweb_address(x.address), tx.outputs())
             _, fee_increase = mwebd.create(tx, keystore, fee_estimator_vb)
