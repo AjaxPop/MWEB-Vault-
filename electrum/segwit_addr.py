@@ -91,7 +91,9 @@ def bech32_decode(bech: str, *, ignore_long_length=False) -> DecodedBech32:
     if bech_lower != bech and bech.upper() != bech:
         return DecodedBech32(None, None, None)
     pos = bech.rfind('1')
-    if pos < 1 or pos + 7 > len(bech) or (not ignore_long_length and len(bech) > 130):
+    # BIP-173/BIP-350 cap ordinary Bech32 strings at 90 characters.
+    # MWEB addresses are an explicit extension and opt out in decode_segwit_address.
+    if pos < 1 or pos + 7 > len(bech) or (not ignore_long_length and len(bech) > 90):
         return DecodedBech32(None, None, None)
     # check that HRP only consists of sane ASCII chars
     if any(ord(x) < 33 or ord(x) > 126 for x in bech[:pos+1]):
@@ -135,7 +137,10 @@ def decode_segwit_address(hrp: str, addr: Optional[str]) -> Tuple[Optional[int],
     """Decode a segwit address."""
     if addr is None:
         return (None, None)
-    encoding, hrpgot, data = bech32_decode(addr)
+    # MWEB uses longer Bech32 payloads than BIP-173 permits. Keep the relaxed
+    # length handling scoped to the dedicated MWEB HRPs instead of weakening
+    # validation for normal ltc/tltc/rltc addresses.
+    encoding, hrpgot, data = bech32_decode(addr, ignore_long_length=hrp.endswith('mweb'))
     if hrpgot != hrp:
         return (None, None)
     decoded = convertbits(data[1:], 5, 8, False)
