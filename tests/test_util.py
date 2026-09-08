@@ -117,7 +117,6 @@ class TestUtil(ElectrumTestCase):
     def test_parse_URI_address_label(self):
         self._do_test_parse_URI('litecoin:LectrumELqJWMECz7W2iarBpT4VvAPqwAv?label=electrum%20test',
                                 {'address': 'LectrumELqJWMECz7W2iarBpT4VvAPqwAv', 'label': 'electrum test'})
-
     def test_parse_URI_address_message(self):
         self._do_test_parse_URI('litecoin:LectrumELqJWMECz7W2iarBpT4VvAPqwAv?message=electrum%20test',
                                 {'address': 'LectrumELqJWMECz7W2iarBpT4VvAPqwAv', 'message': 'electrum test', 'memo': 'electrum test'})
@@ -153,39 +152,69 @@ class TestUtil(ElectrumTestCase):
 
     @as_testnet
     def test_parse_URI_unsupported_req_key(self):
-        self._do_test_parse_URI('litecoin:TB1QXJ6KVTE6URY2MX695METFTFT7LR5HYK4M3VT5F?amount=0.00100000&label=test&somethingyoudontunderstand=50',
-                                {'address': 'TB1QXJ6KVTE6URY2MX695METFTFT7LR5HYK4M3VT5F', 'amount': 100000, 'label': 'test', 'somethingyoudontunderstand': '50'})
+        self._do_test_parse_URI('litecoin:TLTC1QXJ6KVTE6URY2MX695METFTFT7LR5HYK4ZEW4YQ?amount=0.00100000&label=test&somethingyoudontunderstand=50',
+                                {'address': 'TLTC1QXJ6KVTE6URY2MX695METFTFT7LR5HYK4ZEW4YQ', 'amount': 100000, 'label': 'test', 'somethingyoudontunderstand': '50'})
         # now test same URI but with "req-test=1" added
-        self.assertRaises(InvalidBitcoinURI, parse_bip21_URI, 'litecoin:TB1QXJ6KVTE6URY2MX695METFTFT7LR5HYK4M3VT5F?amount=0.00100000&label=test&req-test=1&somethingyoudontunderstand=50')
+        self.assertRaises(InvalidBitcoinURI, parse_bip21_URI, 'litecoin:TLTC1QXJ6KVTE6URY2MX695METFTFT7LR5HYK4ZEW4YQ?amount=0.00100000&label=test&req-test=1&somethingyoudontunderstand=50')
 
     @as_testnet
-    def test_parse_URI_lightning_consistency(self): # TODO(LOSHY): replace lightning invoices and some ltc addresses
-        # bip21 uri that *only* includes a "lightningltc" key. LN part does not have fallback address
-        self._do_test_parse_URI('litecoin:?lightningltc=lntb700u1p3kqy0cpp5azvqy3wez7hcz3ka7tpqqvw5mpsa7fknxl4ca7a7669kswhf0hgqsp5qxhxul9k88w2nsk643elzuu4nepwkq052ek79esmz47yj6lfrhuqdqvw3jhxapjxcmscqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqyznyzw55q63yytup920n9qcsnh6qqht48maapzgadll2qy5vheeq26crapt0rcv9aqmpm93ljkapgtc05keud9jhlasns795fylfdjsphud9uh',
-                                {'lightningltc': 'lntb700u1p3kqy0cpp5azvqy3wez7hcz3ka7tpqqvw5mpsa7fknxl4ca7a7669kswhf0hgqsp5qxhxul9k88w2nsk643elzuu4nepwkq052ek79esmz47yj6lfrhuqdqvw3jhxapjxcmscqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqyznyzw55q63yytup920n9qcsnh6qqht48maapzgadll2qy5vheeq26crapt0rcv9aqmpm93ljkapgtc05keud9jhlasns795fylfdjsphud9uh'})
-        # bip21 uri that *only* includes a "lightningltc" key. LN part has fallback address
-        self._do_test_parse_URI('litecoin:?lightningltc=lntb700u1p3kqy26pp5l7rj7w0u5sdsj24umzdlhdhkk8a597sn865rhap4h4jenjefdk7ssp5d9zjr96ezp89gsyenfse5f4jn9ls29p0awvp0zxlt6tpzn2m3j5qdqvw3jhxapjxcmqcqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqfppqu5ua3szskclyd48wlfdwfd32j65phxy9vu8dmmk3u20u0e0yqw484xzn4hc3cux6kk2wenhw7zy0mseu9ntpk9l4fws2d46svzszrc6mqy535740ks9j22w67fw0x4dt8w2hhzspcqakql',
-                                {'lightningltc': 'lntb700u1p3kqy26pp5l7rj7w0u5sdsj24umzdlhdhkk8a597sn865rhap4h4jenjefdk7ssp5d9zjr96ezp89gsyenfse5f4jn9ls29p0awvp0zxlt6tpzn2m3j5qdqvw3jhxapjxcmqcqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqfppqu5ua3szskclyd48wlfdwfd32j65phxy9vu8dmmk3u20u0e0yqw484xzn4hc3cux6kk2wenhw7zy0mseu9ntpk9l4fws2d46svzszrc6mqy535740ks9j22w67fw0x4dt8w2hhzspcqakql'})
-        # bip21 uri that includes "lightningltc" key. LN part does not have fallback address
-        self._do_test_parse_URI('litecoin:tb1qu5ua3szskclyd48wlfdwfd32j65phxy9yf7ytl?amount=0.0007&message=test266&lightningltc=lntb700u1p3kqy0cpp5azvqy3wez7hcz3ka7tpqqvw5mpsa7fknxl4ca7a7669kswhf0hgqsp5qxhxul9k88w2nsk643elzuu4nepwkq052ek79esmz47yj6lfrhuqdqvw3jhxapjxcmscqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqyznyzw55q63yytup920n9qcsnh6qqht48maapzgadll2qy5vheeq26crapt0rcv9aqmpm93ljkapgtc05keud9jhlasns795fylfdjsphud9uh',
-                                {'address': 'tb1qu5ua3szskclyd48wlfdwfd32j65phxy9yf7ytl',
-                                 'amount': 70000,
-                                 'lightning': 'lntb700u1p3kqy0cpp5azvqy3wez7hcz3ka7tpqqvw5mpsa7fknxl4ca7a7669kswhf0hgqsp5qxhxul9k88w2nsk643elzuu4nepwkq052ek79esmz47yj6lfrhuqdqvw3jhxapjxcmscqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqyznyzw55q63yytup920n9qcsnh6qqht48maapzgadll2qy5vheeq26crapt0rcv9aqmpm93ljkapgtc05keud9jhlasns795fylfdjsphud9uh',
-                                 'memo': 'test266',
-                                 'message': 'test266'})
-        # bip21 uri that includes "lightningltc" key. LN part has fallback address
-        self._do_test_parse_URI('litecoin:tb1qu5ua3szskclyd48wlfdwfd32j65phxy9yf7ytl?amount=0.0007&message=test266&lightningltc=lntb700u1p3kqy26pp5l7rj7w0u5sdsj24umzdlhdhkk8a597sn865rhap4h4jenjefdk7ssp5d9zjr96ezp89gsyenfse5f4jn9ls29p0awvp0zxlt6tpzn2m3j5qdqvw3jhxapjxcmqcqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqfppqu5ua3szskclyd48wlfdwfd32j65phxy9vu8dmmk3u20u0e0yqw484xzn4hc3cux6kk2wenhw7zy0mseu9ntpk9l4fws2d46svzszrc6mqy535740ks9j22w67fw0x4dt8w2hhzspcqakql',
-                                {'address': 'tb1qu5ua3szskclyd48wlfdwfd32j65phxy9yf7ytl',
-                                 'amount': 70000,
-                                 'lightningltc': 'lntb700u1p3kqy26pp5l7rj7w0u5sdsj24umzdlhdhkk8a597sn865rhap4h4jenjefdk7ssp5d9zjr96ezp89gsyenfse5f4jn9ls29p0awvp0zxlt6tpzn2m3j5qdqvw3jhxapjxcmqcqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqfppqu5ua3szskclyd48wlfdwfd32j65phxy9vu8dmmk3u20u0e0yqw484xzn4hc3cux6kk2wenhw7zy0mseu9ntpk9l4fws2d46svzszrc6mqy535740ks9j22w67fw0x4dt8w2hhzspcqakql',
-                                 'memo': 'test266',
-                                 'message': 'test266'})
-        # bip21 uri that includes "lightning" key. LN part has fallback address BUT it mismatches the top-level address
-        self.assertRaises(InvalidBitcoinURI, parse_bip21_URI, 'litecoin:tb1qvu0c9xme0ul3gzx4nzqdgxsu25acuk9wvsj2j2?amount=0.0007&message=test266&lightning=lntb700u1p3kqy26pp5l7rj7w0u5sdsj24umzdlhdhkk8a597sn865rhap4h4jenjefdk7ssp5d9zjr96ezp89gsyenfse5f4jn9ls29p0awvp0zxlt6tpzn2m3j5qdqvw3jhxapjxcmqcqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqfppqu5ua3szskclyd48wlfdwfd32j65phxy9vu8dmmk3u20u0e0yqw484xzn4hc3cux6kk2wenhw7zy0mseu9ntpk9l4fws2d46svzszrc6mqy535740ks9j22w67fw0x4dt8w2hhzspcqakql')
-        # bip21 uri that includes "lightning" key. top-level amount mismatches LN amount
-        self.assertRaises(InvalidBitcoinURI, parse_bip21_URI, 'litecoin:tb1qu5ua3szskclyd48wlfdwfd32j65phxy9yf7ytl?amount=0.0008&message=test266&lightning=lntb700u1p3kqy26pp5l7rj7w0u5sdsj24umzdlhdhkk8a597sn865rhap4h4jenjefdk7ssp5d9zjr96ezp89gsyenfse5f4jn9ls29p0awvp0zxlt6tpzn2m3j5qdqvw3jhxapjxcmqcqzynxq8zals8sq9q7sqqqqqqqqqqqqqqqqqqqqqqqqq9qsqfppqu5ua3szskclyd48wlfdwfd32j65phxy9vu8dmmk3u20u0e0yqw484xzn4hc3cux6kk2wenhw7zy0mseu9ntpk9l4fws2d46svzszrc6mqy535740ks9j22w67fw0x4dt8w2hhzspcqakql')
-        # bip21 uri that includes "lightning" key with garbage unparseable value
-        self.assertRaises(InvalidBitcoinURI, parse_bip21_URI, 'litecoin:tb1qu5ua3szskclyd48wlfdwfd32j65phxy9yf7ytl?amount=0.0008&message=test266&lightning=lntb700u1p3kqy26pp5l7rj7w0u5sdsj24umzdlhdasdasdasdasd')
+    def test_parse_URI_lightning_consistency(self):
+        from electrum.lnaddr import LnAddr, lnencode
+
+        matching_address = 'tltc1qu5ua3szskclyd48wlfdwfd32j65phxy9apu6mk'
+        mismatching_address = 'tltc1qvu0c9xme0ul3gzx4nzqdgxsu25acuk9wc46pwf'
+        payment_hash = bytes.fromhex('11' * 32)
+        privkey = bytes.fromhex('22' * 32)
+        invoice_no_fallback = lnencode(
+            LnAddr(paymenthash=payment_hash, amount=Decimal('0.0007'), tags=[('d', 'test266')]),
+            privkey,
+        )
+        invoice_with_fallback = lnencode(
+            LnAddr(paymenthash=payment_hash, amount=Decimal('0.0007'),
+                   tags=[('d', 'test266'), ('f', matching_address)]),
+            privkey,
+        )
+
+        self._do_test_parse_URI(
+            f'litecoin:?lightning={invoice_no_fallback}',
+            {'lightning': invoice_no_fallback},
+        )
+        self._do_test_parse_URI(
+            f'litecoin:?lightning={invoice_with_fallback}',
+            {'lightning': invoice_with_fallback},
+        )
+        self._do_test_parse_URI(
+            f'litecoin:{matching_address}?amount=0.0007&message=test266&lightning={invoice_no_fallback}',
+            {
+                'address': matching_address,
+                'amount': 70000,
+                'lightning': invoice_no_fallback,
+                'memo': 'test266',
+                'message': 'test266',
+            },
+        )
+        self._do_test_parse_URI(
+            f'litecoin:{matching_address}?amount=0.0007&message=test266&lightning={invoice_with_fallback}',
+            {
+                'address': matching_address,
+                'amount': 70000,
+                'lightning': invoice_with_fallback,
+                'memo': 'test266',
+                'message': 'test266',
+            },
+        )
+        with self.assertRaises(InvalidBitcoinURI):
+            parse_bip21_URI(
+                f'litecoin:{mismatching_address}?amount=0.0007&message=test266&lightning={invoice_with_fallback}'
+            )
+        with self.assertRaises(InvalidBitcoinURI):
+            parse_bip21_URI(
+                f'litecoin:{matching_address}?amount=0.0008&message=test266&lightning={invoice_no_fallback}'
+            )
+        with self.assertRaises(InvalidBitcoinURI):
+            parse_bip21_URI(
+                f'litecoin:{matching_address}?amount=0.0007&message=test266&lightning=lntltc700u1thisisinvalid'
+            )
 
     def test_is_hash256_str(self):
         self.assertTrue(is_hash256_str('09a4c03e3bdf83bbe3955f907ee52da4fc12f4813d459bc75228b64ad08617c7'))
@@ -337,7 +366,6 @@ class TestUtil(ElectrumTestCase):
         self.assertFalse(is_private_netaddress("[2a00:1450:400e:80d::200e]"))
         self.assertFalse(is_private_netaddress("8.8.8.8"))
         self.assertFalse(is_private_netaddress("example.com"))
-
     def test_is_subpath(self):
         self.assertTrue(util.is_subpath("/a/b/c/d/e", "/"))
         self.assertTrue(util.is_subpath("/a/b/c/d/e", "/a"))
@@ -516,4 +544,3 @@ class TestUtil(ElectrumTestCase):
             await asyncio.sleep(0)
         # refs should be cleaned up by now:
         self.assertEqual(0, len(util._running_asyncio_tasks))
-
