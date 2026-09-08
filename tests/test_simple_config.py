@@ -1,4 +1,4 @@
-import ast
+import json
 import sys
 import os
 import tempfile
@@ -109,7 +109,7 @@ class Test_SimpleConfig(ElectrumTestCase):
         contents = None
         with open(os.path.join(self.electrum_dir, "config"), "r") as f:
             contents = f.read()
-        result = ast.literal_eval(contents)
+        result = json.loads(contents)
         result.pop('config_version', None)
         self.assertEqual({"something": "a"}, result)
 
