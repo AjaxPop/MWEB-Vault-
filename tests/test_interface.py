@@ -1,6 +1,8 @@
 import asyncio
 import collections
+from types import SimpleNamespace
 from typing import Optional, Sequence, Iterable, Mapping
+from unittest import mock
 
 import aiorpcx
 from aiorpcx import RPCError
@@ -366,8 +368,19 @@ class TestInterface(ElectrumTestCase):
         interface = await self._start_iface_and_wait_for_sync()
         rawtx1 = "020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff025200ffffffff0200f2052a010000001600140297bde2689a3c79ffe050583b62f86f2d9dae540000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000"
         tx = Transaction(rawtx1)
-        # broadcast
-        await interface.broadcast_transaction(tx)
+
+        class ToyMwebStub:
+            async def Broadcast(self, request):
+                txid = await _get_active_server_session()._handle_transaction_broadcast(request.raw_tx.hex())
+                return SimpleNamespace(txid=txid)
+
+        # Isolate this toy Electrum-server test from the native mwebd socket.
+        # The production broadcast path remains unchanged; the fake MWEB RPC
+        # forwards the request into the existing toy server so cache behavior
+        # can still be tested end-to-end.
+        with mock.patch('electrum.interface.mwebd.stub_async', return_value=ToyMwebStub()):
+            await interface.broadcast_transaction(tx)
+
         self.assertEqual(bfh(rawtx1), _get_active_server_session().txs.get(tx.txid()))
         # now request tx.
         # as we just broadcast this same tx, this will hit the client iface cache, and won't call the server.
