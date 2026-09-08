@@ -25,21 +25,23 @@ jobs:
           from pathlib import Path
 
           path = Path("electrum/wallet.py")
-          text = path.read_text()
-          old = """                change_addrs=change_addrs,
-                fee_estimator_vb=fee_estimator,
-                dust_threshold=self.dust_threshold())"""
-          new = """                change_addrs=change_addrs,
-                keystore=self.keystore,
-                fee_estimator_vb=fee_estimator,
-                dust_threshold=self.dust_threshold())"""
+          lines = path.read_text().splitlines(keepends=True)
+          matches = []
+          for i in range(len(lines) - 2):
+              if (
+                  lines[i].strip() == "change_addrs=change_addrs,"
+                  and lines[i + 1].strip() == "fee_estimator_vb=fee_estimator,"
+                  and lines[i + 2].strip() == "dust_threshold=self.dust_threshold())"
+              ):
+                  matches.append(i)
 
-          if new in text:
-              raise SystemExit("bump-fee keystore fix is already present")
-          count = text.count(old)
-          if count != 1:
-              raise SystemExit(f"expected exactly one bump-fee target, found {count}")
-          path.write_text(text.replace(old, new, 1))
+          if len(matches) != 1:
+              raise SystemExit(f"expected exactly one bump-fee target, found {len(matches)}")
+
+          i = matches[0]
+          indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
+          lines.insert(i + 1, f"{indent}keystore=self.keystore,\n")
+          path.write_text("".join(lines))
           PY
 
       - name: Commit fix to PR 4 branch
