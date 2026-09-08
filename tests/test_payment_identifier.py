@@ -1,9 +1,11 @@
 import os
 import asyncio
+from decimal import Decimal
 from unittest.mock import patch
 
-from electrum import SimpleConfig
+from electrum import SimpleConfig, bitcoin, constants, segwit_addr
 from electrum.invoices import Invoice
+from electrum.lnaddr import LnAddr, lnencode
 from electrum.payment_identifier import (
     maybe_extract_bech32_lightning_payment_identifier, PaymentIdentifier, PaymentIdentifierType,
     PaymentIdentifierState, invoice_from_payment_identifier, remove_uri_prefix,
@@ -13,6 +15,40 @@ from electrum.transaction import PartialTxOutput
 
 from . import ElectrumTestCase
 from . import restore_wallet_from_text__for_unittest
+
+
+_RHASH = bytes.fromhex('0001020304050607080900010203040506070809000102030405060708090102')
+_PAYMENT_SECRET = bytes.fromhex('11' * 32)
+_PRIVKEY = bytes.fromhex('e126f68f7eafcc8b74f54d269fe206be715000f94dac067d1c04a8ca3b2db734')
+
+
+def _ltc_bech32_from_bitcoin(address: str) -> str:
+    """Re-encode a Bitcoin Bech32 test vector for Litecoin without changing its witness program."""
+    witver, witprog = segwit_addr.decode_segwit_address('bc', address)
+    assert witprog is not None
+    converted = segwit_addr.encode_segwit_address(constants.net.SEGWIT_HRP, witver, bytes(witprog))
+    assert converted is not None
+    return converted
+
+
+def _ltc_p2pkh_from_bitcoin(address: str) -> str:
+    """Re-encode a legacy Bitcoin P2PKH test vector using Litecoin's network byte."""
+    _, hash160 = bitcoin.b58_address_to_hash160(address)
+    return bitcoin.hash160_to_b58_address(hash160, constants.net.ADDRTYPE_P2PKH)
+
+
+def _make_ltc_bolt11(*, amount: Decimal = None, fallback: str = None) -> str:
+    tags = [('d', 'unit_test'), ('9', 33282)]
+    if fallback is not None:
+        tags.append(('f', fallback))
+    lnaddr = LnAddr(
+        date=1615922274,
+        paymenthash=_RHASH,
+        payment_secret=_PAYMENT_SECRET,
+        amount=amount,
+        tags=tags,
+    )
+    return lnencode(lnaddr, _PRIVKEY)
 
 
 class WalletMock:
@@ -36,7 +72,7 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.wallet2_path = os.path.join(self.electrum_path, "somewallet2")
 
     def test_maybe_extract_bech32_lightning_payment_identifier(self):
-        bolt11 = "lnbc1ps9zprzpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqq9qypqszpyrpe4tym8d3q87d43cgdhhlsrt78epu7u99mkzttmt2wtsx0304rrw50addkryfrd3vn3zy467vxwlmf4uz7yvntuwjr2hqjl9lw5cqwtp2dy"
+        bolt11 = _make_ltc_bolt11()
         lnurl = "lnurl1dp68gurn8ghj7um9wfmxjcm99e5k7telwy7nxenrxvmrgdtzxsenjcm98pjnwxq96s9"
         self.assertEqual(bolt11, maybe_extract_bech32_lightning_payment_identifier(f"{bolt11}".upper()))
         self.assertEqual(bolt11, maybe_extract_bech32_lightning_payment_identifier(f"lightning:{bolt11}"))
@@ -49,17 +85,17 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertEqual(None, maybe_extract_bech32_lightning_payment_identifier(f"garbage text"))
 
     def test_remove_uri_prefix(self):
-        lightning, bitcoin = 'lightning', 'bitcoin'
+        lightning, bitcoin_scheme = 'lightning', 'bitcoin'
         tests = (
             (lightning, '', ''),
             (lightning, 'lightning:test', 'test'),
             (lightning, 'bitcoin:test', 'bitcoin:test'),
             (lightning, 'lightningtest', 'lightningtest'),
             (lightning, 'lightning test', 'lightning test'),
-            (bitcoin, 'lightning:test', 'lightning:test'),
-            (bitcoin, 'bitcoin:test', 'test'),
-            (bitcoin, 'bitcoin', 'bitcoin'),
-            (bitcoin, 'bitcoin:', ''),
+            (bitcoin_scheme, 'lightning:test', 'lightning:test'),
+            (bitcoin_scheme, 'bitcoin:test', 'test'),
+            (bitcoin_scheme, 'bitcoin', 'bitcoin'),
+            (bitcoin_scheme, 'bitcoin:', ''),
         )
         for prefix, input_str, expected_output_str in tests:
             output_str = remove_uri_prefix(input_str, prefix=prefix)
@@ -68,8 +104,8 @@ class TestPaymentIdentifier(ElectrumTestCase):
             remove_uri_prefix(data=1234, prefix="test")
 
     def test_bolt11(self):
-        # no amount, no fallback address
-        bolt11 = 'lnbc1ps9zprzpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqq9qypqszpyrpe4tym8d3q87d43cgdhhlsrt78epu7u99mkzttmt2wtsx0304rrw50addkryfrd3vn3zy467vxwlmf4uz7yvntuwjr2hqjl9lw5cqwtp2dy'
+        # Native Litecoin invoice, no amount and no fallback address.
+        bolt11 = _make_ltc_bolt11()
         for pi_str in [
             f'{bolt11}',
             f'  {bolt11}',
@@ -94,8 +130,9 @@ class TestPaymentIdentifier(ElectrumTestCase):
             pi = PaymentIdentifier(None, pi_str)
             self.assertFalse(pi.is_valid())
 
-        # amount, fallback address
-        bolt_11_w_fallback = 'lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqsfpp3qjmp7lwpagxun9pygexvgpjdc4jdj85fr9yq20q82gphp2nflc7jtzrcazrra7wwgzxqc8u7754cdlpfrmccae92qgzqvzq2ps8pqqqqqqpqqqqq9qqqvpeuqafqxu92d8lr6fvg0r5gv0heeeqgcrqlnm6jhphu9y00rrhy4grqszsvpcgpy9qqqqqqgqqqqq7qqzqj9n4evl6mr5aj9f58zp6fyjzup6ywn3x6sk8akg5v4tgn2q8g4fhx05wf6juaxu9760yp46454gpg5mtzgerlzezqcqvjnhjh8z3g2qqdhhwkj'
+        # Native Litecoin invoice with amount and Litecoin fallback address.
+        fallback = _ltc_p2pkh_from_bitcoin('1RustyRX2oai4EYYDpQGWvEL62BBGqN9T')
+        bolt_11_w_fallback = _make_ltc_bolt11(amount=Decimal('0.02'), fallback=fallback)
         pi = PaymentIdentifier(None, bolt_11_w_fallback)
         self.assertTrue(pi.is_valid())
         self.assertEqual(PaymentIdentifierType.BOLT11, pi.type)
@@ -110,7 +147,11 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertFalse(pi.is_multiline())
 
     def test_bip21(self):
-        bip21 = 'bitcoin:bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293?message=unit_test'
+        address1 = _ltc_bech32_from_bitcoin('bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293')
+        address2 = _ltc_bech32_from_bitcoin('bc1qy7ps80x5csdqpfcekn97qfljxtg2lrya8826ds')
+        legacy_address = _ltc_p2pkh_from_bitcoin('1RustyRX2oai4EYYDpQGWvEL62BBGqN9T')
+
+        bip21 = f'litecoin:{address1}?message=unit_test'
         for pi_str in [
             f'{bip21}',
             f'  {bip21}',
@@ -124,7 +165,7 @@ class TestPaymentIdentifier(ElectrumTestCase):
             self.assertIsNotNone(pi.bip21)
 
         # amount, expired, message
-        bip21 = 'bitcoin:bc1qy7ps80x5csdqpfcekn97qfljxtg2lrya8826ds?amount=0.001&message=unit_test&time=1707382023&exp=3600'
+        bip21 = f'litecoin:{address2}?amount=0.001&message=unit_test&time=1707382023&exp=3600'
 
         pi = PaymentIdentifier(None, bip21)
         self.assertTrue(pi.is_available())
@@ -135,8 +176,9 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertTrue(pi.has_expired())
         self.assertEqual('unit_test', pi.bip21.get('message'))
 
-        # amount, expired, message, lightning w matching amount
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=0.02&message=unit_test&time=1707382023&exp=3600&lightning=lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqsfpp3qjmp7lwpagxun9pygexvgpjdc4jdj85fr9yq20q82gphp2nflc7jtzrcazrra7wwgzxqc8u7754cdlpfrmccae92qgzqvzq2ps8pqqqqqqpqqqqq9qqqvpeuqafqxu92d8lr6fvg0r5gv0heeeqgcrqlnm6jhphu9y00rrhy4grqszsvpcgpy9qqqqqqgqqqqq7qqzqj9n4evl6mr5aj9f58zp6fyjzup6ywn3x6sk8akg5v4tgn2q8g4fhx05wf6juaxu9760yp46454gpg5mtzgerlzezqcqvjnhjh8z3g2qqdhhwkj'
+        # amount, expired, message, lightning with matching amount
+        bolt11 = _make_ltc_bolt11(amount=Decimal('0.02'), fallback=legacy_address)
+        bip21 = f'litecoin:{legacy_address}?amount=0.02&message=unit_test&time=1707382023&exp=3600&lightning={bolt11}'
 
         pi = PaymentIdentifier(None, bip21)
         self.assertTrue(pi.is_available())
@@ -148,22 +190,22 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertTrue(pi.has_expired())
         self.assertEqual('unit_test', pi.bip21.get('message'))
 
-        # amount, expired, message, lightning w non-matching amount
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=0.01&message=unit_test&time=1707382023&exp=3600&lightning=lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqsfpp3qjmp7lwpagxun9pygexvgpjdc4jdj85fr9yq20q82gphp2nflc7jtzrcazrra7wwgzxqc8u7754cdlpfrmccae92qgzqvzq2ps8pqqqqqqpqqqqq9qqqvpeuqafqxu92d8lr6fvg0r5gv0heeeqgcrqlnm6jhphu9y00rrhy4grqszsvpcgpy9qqqqqqgqqqqq7qqzqj9n4evl6mr5aj9f58zp6fyjzup6ywn3x6sk8akg5v4tgn2q8g4fhx05wf6juaxu9760yp46454gpg5mtzgerlzezqcqvjnhjh8z3g2qqdhhwkj'
+        # amount, expired, message, lightning with non-matching amount
+        bip21 = f'litecoin:{legacy_address}?amount=0.01&message=unit_test&time=1707382023&exp=3600&lightning={bolt11}'
 
         pi = PaymentIdentifier(None, bip21)
         self.assertFalse(pi.is_valid())
 
-        # amount bounds
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=-1'
+        # amount bounds for Litecoin
+        bip21 = f'litecoin:{legacy_address}?amount=-1'
         pi = PaymentIdentifier(None, bip21)
         self.assertFalse(pi.is_valid())
 
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=21000001'
+        bip21 = f'litecoin:{legacy_address}?amount=84000001'
         pi = PaymentIdentifier(None, bip21)
         self.assertFalse(pi.is_valid())
 
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=0'
+        bip21 = f'litecoin:{legacy_address}?amount=0'
         pi = PaymentIdentifier(None, bip21)
         self.assertFalse(pi.is_valid())
 
@@ -189,7 +231,6 @@ class TestPaymentIdentifier(ElectrumTestCase):
         """Test LNURL-pay (LNURL6) with mocked resolve"""
         valid_lnurl = 'LNURL1DP68GURN8GHJ7MRWVF5HGUEWD3HXZERYWFJHXUEWVDHK6TMVDE6HYMRS9ANRV46DXETQPJQCS4'
 
-        # Mock lnurl-p response
         mock_lnurl6_data = LNURL6Data(
             callback_url='https://example.com/lnurl-pay',
             max_sendable_sat=1_000_000,
@@ -225,7 +266,6 @@ class TestPaymentIdentifier(ElectrumTestCase):
                         'WENP8P3NJEP3XE3NQWRPXFJR2VRRVSCX2V33V5UNVC3SXP3RXCFSVFSKVWPCV3SKZWTP8YUZ7AMFW35XGUNPWUHKZURF9AMRZT' \
                         'MVDE6HYMP0FETHVUNZDAMHQ7JSF4RX73TZ2VU9Z3J3GVMSLCJ57F'
 
-        # Mock lnurl-w response
         mock_lnurl3_data = LNURL3Data(
             callback_url='https://example.com/lnurl-withdraw',
             k1='test-k1-value',
@@ -259,7 +299,6 @@ class TestPaymentIdentifier(ElectrumTestCase):
                   'WENP8P3NJEP3XE3NQWRPXFJR2VRRVSCX2V33V5UNVC3SXP3RXCFSVFSKVWPCV3SKZWTP8YUZ7AMFW35XGUNPWUHKZURF9AMRZT' \
                   'MVDE6HYMP0FETHVUNZDAMHQ7JSF4RX73TZ2VU9Z3J3GVMSLCJ57F'
 
-        # Mock LNURL error
         mock_request_lnurl.side_effect = LNURLError("Server error")
 
         pi = PaymentIdentifier(None, lnurl)
@@ -275,9 +314,13 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertIn("Server error", pi.get_error())
 
     def test_multiline(self):
+        addr1 = _ltc_bech32_from_bitcoin('bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293')
+        addr2 = _ltc_bech32_from_bitcoin('bc1q66ex4c3vek4cdmrfjxtssmtguvs3r30pf42jpj')
+        addr3 = _ltc_bech32_from_bitcoin('bc1qy7ps80x5csdqpfcekn97qfljxtg2lrya8826ds')
+
         pi_str = '\n'.join([
-            'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293,0.01',
-            'bc1q66ex4c3vek4cdmrfjxtssmtguvs3r30pf42jpj,0.01',
+            f'{addr1},0.01',
+            f'{addr2},0.01',
         ])
         pi = PaymentIdentifier(self.wallet, pi_str)
         self.assertTrue(pi.is_valid())
@@ -290,9 +333,9 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertEqual(1000, pi.multiline_outputs[1].value)
 
         pi_str = '\n'.join([
-            'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293,0.01',
-            'bc1q66ex4c3vek4cdmrfjxtssmtguvs3r30pf42jpj,0.01',
-            'bc1qy7ps80x5csdqpfcekn97qfljxtg2lrya8826ds,!',
+            f'{addr1},0.01',
+            f'{addr2},0.01',
+            f'{addr3},!',
         ])
         pi = PaymentIdentifier(self.wallet, pi_str)
         self.assertTrue(pi.is_valid())
@@ -306,9 +349,9 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertEqual('!', pi.multiline_outputs[2].value)
 
         pi_str = '\n'.join([
-            'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293,0.01',
-            'bc1q66ex4c3vek4cdmrfjxtssmtguvs3r30pf42jpj,2!',
-            'bc1qy7ps80x5csdqpfcekn97qfljxtg2lrya8826ds,3!',
+            f'{addr1},0.01',
+            f'{addr2},2!',
+            f'{addr3},3!',
         ])
         pi = PaymentIdentifier(self.wallet, pi_str)
         self.assertTrue(pi.is_valid())
@@ -322,7 +365,7 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertEqual('3!', pi.multiline_outputs[2].value)
 
         pi_str = '\n'.join([
-            'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293,0.01',
+            f'{addr1},0.01',
             'script(OP_RETURN baddc0ffee),0'
         ])
         pi = PaymentIdentifier(self.wallet, pi_str)
@@ -335,7 +378,7 @@ class TestPaymentIdentifier(ElectrumTestCase):
         self.assertEqual(0, pi.multiline_outputs[1].value)
 
     def test_spk(self):
-        address = 'bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293'
+        address = _ltc_bech32_from_bitcoin('bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293')
         for pi_str in [
             f'{address}',
             f'  {address}',
@@ -361,8 +404,8 @@ class TestPaymentIdentifier(ElectrumTestCase):
         domain_pi_strings = (
             'some.domain',
             'some.weird.but.valid.domain',
-            'lnbcsome.weird.but.valid.domain',
-            'bc1qsome.weird.but.valid.domain',
+            'lnltcsome.weird.but.valid.domain',
+            'ltc1qsome.weird.but.valid.domain',
             'lnurlsome.weird.but.valid.domain',
         )
         for pi_str in domain_pi_strings:
@@ -375,14 +418,14 @@ class TestPaymentIdentifier(ElectrumTestCase):
         email_pi_strings = (
             'user@some.domain',
             'user@some.weird.but.valid.domain',
-            'lnbcuser@some.domain',
+            'lnltcuser@some.domain',
             'lnurluser@some.domain',
-            'bc1quser@some.domain',
+            'ltc1quser@some.domain',
             'lightning:user@some.domain',
             'lightning:user@some.weird.but.valid.domain',
-            'lightning:lnbcuser@some.domain',
+            'lightning:lnltcuser@some.domain',
             'lightning:lnurluser@some.domain',
-            'lightning:bc1quser@some.domain',
+            'lightning:ltc1quser@some.domain',
         )
         for pi_str in email_pi_strings:
             pi = PaymentIdentifier(None, pi_str)
@@ -392,8 +435,11 @@ class TestPaymentIdentifier(ElectrumTestCase):
             self.assertTrue(pi.need_resolve())
 
     async def test_invoice_from_payment_identifier(self):
-        # amount, expired, message, lightning w matching amount
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?amount=0.02&message=unit_test&time=1707382023&exp=3600&lightning=lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqsfpp3qjmp7lwpagxun9pygexvgpjdc4jdj85fr9yq20q82gphp2nflc7jtzrcazrra7wwgzxqc8u7754cdlpfrmccae92qgzqvzq2ps8pqqqqqqpqqqqq9qqqvpeuqafqxu92d8lr6fvg0r5gv0heeeqgcrqlnm6jhphu9y00rrhy4grqszsvpcgpy9qqqqqqgqqqqq7qqzqj9n4evl6mr5aj9f58zp6fyjzup6ywn3x6sk8akg5v4tgn2q8g4fhx05wf6juaxu9760yp46454gpg5mtzgerlzezqcqvjnhjh8z3g2qqdhhwkj'
+        legacy_address = _ltc_p2pkh_from_bitcoin('1RustyRX2oai4EYYDpQGWvEL62BBGqN9T')
+        bolt11_amount = _make_ltc_bolt11(amount=Decimal('0.02'), fallback=legacy_address)
+
+        # amount, expired, message, lightning with matching amount
+        bip21 = f'litecoin:{legacy_address}?amount=0.02&message=unit_test&time=1707382023&exp=3600&lightning={bolt11_amount}'
 
         pi = PaymentIdentifier(None, bip21)
         invoice = invoice_from_payment_identifier(pi, None, None)
@@ -403,18 +449,18 @@ class TestPaymentIdentifier(ElectrumTestCase):
 
         text = 'bitter grass shiver impose acquire brush forget axis eager alone wine silver'
         d = restore_wallet_from_text__for_unittest(text, path=self.wallet2_path, config=self.config)
-        wallet2 = d['wallet']  # type: Standard_Wallet
+        wallet2 = d['wallet']
 
         # no amount bip21+lightning, MAX amount passed
-        bip21 = 'bitcoin:1RustyRX2oai4EYYDpQGWvEL62BBGqN9T?message=unit_test&time=1707382023&exp=3600&lightning=lnbc1ps9zprzpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqq9qypqszpyrpe4tym8d3q87d43cgdhhlsrt78epu7u99mkzttmt2wtsx0304rrw50addkryfrd3vn3zy467vxwlmf4uz7yvntuwjr2hqjl9lw5cqwtp2dy'
+        bolt11_no_amount = _make_ltc_bolt11()
+        bip21 = f'litecoin:{legacy_address}?message=unit_test&time=1707382023&exp=3600&lightning={bolt11_no_amount}'
         pi = PaymentIdentifier(None, bip21)
         invoice = invoice_from_payment_identifier(pi, wallet2, '!')
         self.assertTrue(isinstance(invoice, Invoice))
         self.assertFalse(invoice.is_lightning())
 
         # no amount lightning, MAX amount passed -> expect raise
-        bolt11 = 'lightning:lnbc1ps9zprzpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsdqq9qypqszpyrpe4tym8d3q87d43cgdhhlsrt78epu7u99mkzttmt2wtsx0304rrw50addkryfrd3vn3zy467vxwlmf4uz7yvntuwjr2hqjl9lw5cqwtp2dy'
-        pi = PaymentIdentifier(None, bolt11)
+        pi = PaymentIdentifier(None, f'lightning:{bolt11_no_amount}')
         with self.assertRaises(AssertionError):
             invoice_from_payment_identifier(pi, wallet2, '!')
         invoice = invoice_from_payment_identifier(pi, wallet2, 1)
