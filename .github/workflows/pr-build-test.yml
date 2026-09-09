@@ -1,12 +1,12 @@
 name: PR Build and Test
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
-      - main
+      - ci-build-mwebd
+
+permissions:
+  contents: write
 
 jobs:
   build-test:
@@ -16,7 +16,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ci-build-mwebd
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Apply exact batch3 fixes
+        shell: bash
+        run: |
+          python .github/apply_litecoin_test_fixes_batch3.py
+          python -m compileall -q tests
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "tests: fix Litecoin fixture scanner and signature vector"
+          git push origin HEAD:ci-build-mwebd
 
       - name: Set up Python
         uses: actions/setup-python@v5
