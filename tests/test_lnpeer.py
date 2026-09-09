@@ -2321,13 +2321,13 @@ class TestPeerForwarding(TestPeer):
         # prepare channels such that a temporary channel failure happens at c->d
         graph_definition = self.GRAPH_DEFINITIONS['square_graph']
         graph_definition['alice']['channels']['carol']['local_balance_msat'] = 200_000_000
-        graph_definition['alice']['channels']['carol']['remote_balance_msat'] = 200_000_000
+        graph_definition['alice']['channels']['carol']['remote_balance_msat'] = 400_000_000
         graph_definition['carol']['channels']['dave']['local_balance_msat'] = 50_000_000
-        graph_definition['carol']['channels']['dave']['remote_balance_msat'] = 200_000_000
+        graph_definition['carol']['channels']['dave']['remote_balance_msat'] = 550_000_000
         graph_definition['alice']['channels']['bob']['local_balance_msat'] = 200_000_000
-        graph_definition['alice']['channels']['bob']['remote_balance_msat'] = 200_000_000
+        graph_definition['alice']['channels']['bob']['remote_balance_msat'] = 400_000_000
         graph_definition['bob']['channels']['dave']['local_balance_msat'] = 200_000_000
-        graph_definition['bob']['channels']['dave']['remote_balance_msat'] = 200_000_000
+        graph_definition['bob']['channels']['dave']['remote_balance_msat'] = 400_000_000
         graph = self.prepare_chans_and_peers_in_graph(graph_definition)
 
         # the payment happens in two attempts:

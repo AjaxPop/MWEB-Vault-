@@ -640,8 +640,8 @@ class TestCommandsTestnet(ElectrumTestCase):
                         }
                     ],
                     'outputs': [
-                        {'address': 'tb1qr5mf6sumdlhjrq9t6wlyvdm960zu0n0t5d60ug', 'value_sat': 500000},
-                        {'address': 'tb1qp3p2d72gj2l7r6za056tgu4ezsurjphper4swh', 'value_sat': 762100}
+                        {'address': 'tltc1qr5mf6sumdlhjrq9t6wlyvdm960zu0n0td9c3vp', 'value_sat': 500000},
+                        {'address': 'tltc1qp3p2d72gj2l7r6za056tgu4ezsurjphpqthw77', 'value_sat': 762100}
                     ],
                 }
             )

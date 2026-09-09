@@ -6,11 +6,12 @@ import tempfile
 import shutil
 import functools
 import inspect
+import json
 from typing import TYPE_CHECKING, List
 
 import electrum
 import electrum.logging
-from electrum import constants, segwit_addr
+from electrum import bitcoin, constants, segwit_addr
 from electrum import util
 from electrum.util import OldTaskGroup
 from electrum.logging import Logger
@@ -30,6 +31,55 @@ FAST_TESTS = False
 electrum.logging._configure_stderr_logging(verbosity="*")
 
 electrum.util.AS_LIB_USER_I_WANT_TO_MANAGE_MY_OWN_ASYNCIO_LOOP = True
+
+
+
+def _convert_legacy_bitcoin_wallet_fixture_address(value):
+    """Re-encode inherited Bitcoin wallet-fixture addresses for Litecoin tests."""
+    if not isinstance(value, str):
+        return value
+
+    lower = value.lower()
+    for old_hrp, new_hrp in (("bc", "ltc"), ("tb", "tltc")):
+        if lower.startswith(old_hrp + "1"):
+            witver, witprog = segwit_addr.decode_segwit_address(old_hrp, value)
+            if witprog is None:
+                return value
+            converted = segwit_addr.encode_segwit_address(
+                new_hrp, witver, bytes(witprog)
+            )
+            return converted if converted is not None else value
+
+    try:
+        payload = bitcoin.DecodeBase58Check(value)
+    except Exception:
+        return value
+    if len(payload) != 21:
+        return value
+
+    # Bitcoin mainnet P2PKH/P2SH and Bitcoin-testnet P2SH use different
+    # display prefixes from Litecoin. Testnet P2PKH uses 111 on both chains.
+    version_map = {
+        0: constants.BitcoinMainnet.ADDRTYPE_P2PKH,
+        5: constants.BitcoinMainnet.ADDRTYPE_P2SH,
+        196: constants.BitcoinTestnet.ADDRTYPE_P2SH,
+    }
+    new_version = version_map.get(payload[0])
+    if new_version is None or new_version == payload[0]:
+        return value
+    return bitcoin.EncodeBase58Check(bytes([new_version]) + payload[1:])
+
+
+def _convert_legacy_bitcoin_wallet_fixture(value):
+    if isinstance(value, dict):
+        return {
+            _convert_legacy_bitcoin_wallet_fixture_address(key):
+                _convert_legacy_bitcoin_wallet_fixture(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_convert_legacy_bitcoin_wallet_fixture(item) for item in value]
+    return _convert_legacy_bitcoin_wallet_fixture_address(value)
 
 
 class ElectrumTestCase(unittest.IsolatedAsyncioTestCase, Logger):
@@ -112,7 +162,23 @@ class ElectrumTestCase(unittest.IsolatedAsyncioTestCase, Logger):
         return lnwallet
 
     def get_wallet_file_path(self, wallet_name: str) -> str:
-        return os.path.join(self.WALLET_FILES_DIR, wallet_name)
+        source_path = os.path.join(self.WALLET_FILES_DIR, wallet_name)
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                original_data = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return source_path
+
+        converted_data = _convert_legacy_bitcoin_wallet_fixture(original_data)
+        if converted_data == original_data:
+            return source_path
+
+        converted_path = os.path.join(
+            self.unittest_base_path, f"ltc-fixture-{wallet_name}"
+        )
+        with open(converted_path, "w", encoding="utf-8") as f:
+            json.dump(converted_data, f)
+        return converted_path
 
 
 def as_testnet(func):
