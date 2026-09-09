@@ -1,0 +1,39 @@
+name: Apply Litecoin test fixes batch 2
+
+on:
+  push:
+    branches:
+      - ci-build-mwebd
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ci-build-mwebd
+          fetch-depth: 0
+
+      - name: Apply guarded test fixes
+        run: python .github/apply_litecoin_test_fixes_batch2.py
+
+      - name: Compile tests
+        run: python -m compileall -q tests
+
+      - name: Validate patch
+        run: git diff --check
+
+      - name: Commit source changes and remove helper
+        shell: bash
+        run: |
+          rm .github/apply_litecoin_test_fixes_batch2.py
+          rm .github/workflows/apply-litecoin-test-fixes-batch2.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "tests: port remaining Litecoin wallet fixtures"
+          git push origin HEAD:ci-build-mwebd
