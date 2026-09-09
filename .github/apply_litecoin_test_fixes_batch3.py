@@ -17,14 +17,26 @@ replace_exact(
     "        self.assertEqual(sig2_b64, b'G2grUCKF3JD3xmtvh6AK9u6NUEKvQazaZWKk51VKp18vPwvkm9Wz0Nu+5V9JT6nXOZn8/XrRMmKaU0QrtzJOGng=')",
 )
 
-# Avoid fragile source-level backslash escaping. Build the JSON-string-token
-# regular expression from re.escape(chr(92)), which yields a literal backslash
-# matcher at runtime while keeping the source unambiguous.
-replace_exact(
-    "tests/__init__.py",
-    "        json_string_re = re.compile(r'\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"')",
-    "        escaped_backslash = re.escape(chr(92))\n        json_string_re = re.compile(\n            '\"'\n            + '([^\"' + escaped_backslash + ']*(?:'\n            + escaped_backslash + '.[^\"' + escaped_backslash + ']*)*)'\n            + '\"'\n        )",
-)
+# The current malformed regex cannot be matched reliably through multiple layers
+# of source/JSON/YAML escaping. Target its unique source line instead, then build
+# the regex from re.escape(chr(92)) so the resulting Python source is unambiguous.
+p = Path("tests/__init__.py")
+lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+matches = [
+    i for i, line in enumerate(lines)
+    if line.strip().startswith("json_string_re = re.compile(")
+]
+if len(matches) != 1:
+    raise SystemExit(f"tests/__init__.py: expected one json_string_re line, found {len(matches)}")
+i = matches[0]
+lines[i:i + 1] = [
+    "        escaped_backslash = re.escape(chr(92))\n",
+    "        json_string_re = re.compile(\n",
+    "            '\"' + '([^\"' + escaped_backslash + ']*(?:'\n",
+    "            + escaped_backslash + '.[^\"' + escaped_backslash + ']*)*)' + '\"'\n",
+    "        )\n",
+]
+p.write_text("".join(lines), encoding="utf-8")
 
 # Restore the focused diagnostic workflow after this one-shot carrier commits.
 workflow = '''name: PR Build and Test
