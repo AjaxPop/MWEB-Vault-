@@ -17,6 +17,20 @@ jobs:
           ref: ci-build-mwebd
           fetch-depth: 0
 
+      - name: Normalize patch generator escaping
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/apply_litecoin_test_fixes_batch2.py')
+          text = p.read_text(encoding='utf-8')
+          old = '            if "\\\\" in value:'
+          new = '            if chr(92) in value:'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one escaping line, found {text.count(old)}')
+          p.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
       - name: Apply guarded test fixes
         run: python .github/apply_litecoin_test_fixes_batch2.py
 
