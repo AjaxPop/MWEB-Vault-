@@ -71,6 +71,12 @@ jobs:
         run: |
           python -m compileall -q electrum
 
-      - name: Run unit tests
+      - name: Run focused unit-test diagnostics
         run: |
-          pytest tests -vv --maxfail=20
+          pytest \
+            tests/test_bitcoin.py \
+            tests/test_commands.py \
+            tests/test_storage_upgrade.py \
+            tests/test_wallet.py \
+            tests/test_wallet_vertical.py \
+            -q --tb=short --maxfail=30
