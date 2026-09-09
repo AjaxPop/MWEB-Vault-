@@ -6,7 +6,7 @@ import tempfile
 import shutil
 import functools
 import inspect
-import json
+import re
 from typing import TYPE_CHECKING, List
 
 import electrum
@@ -165,19 +165,39 @@ class ElectrumTestCase(unittest.IsolatedAsyncioTestCase, Logger):
         source_path = os.path.join(self.WALLET_FILES_DIR, wallet_name)
         try:
             with open(source_path, "r", encoding="utf-8") as f:
-                original_data = json.load(f)
-        except (OSError, json.JSONDecodeError):
+                original_text = f.read()
+        except OSError:
             return source_path
 
-        converted_data = _convert_legacy_bitcoin_wallet_fixture(original_data)
-        if converted_data == original_data:
+        # Wallet files can be an initial JSON document followed by newline-delimited
+        # JSON-patch entries. Work on JSON string tokens in the raw text so the
+        # journal, tx hex, hashes, keys, and other historical material stay intact.
+        json_string_re = re.compile(r'"([^"\]*(?:\.[^"\]*)*)"')
+
+        def convert_json_string(match):
+            value = match.group(1)
+            if chr(92) in value:
+                return match.group(0)
+            # Patch paths can contain addresses as slash-separated path segments.
+            parts = value.split("/")
+            converted_parts = [
+                _convert_legacy_bitcoin_wallet_fixture_address(part)
+                for part in parts
+            ]
+            converted = "/".join(converted_parts)
+            if converted == value:
+                return match.group(0)
+            return f'"{converted}"'
+
+        converted_text = json_string_re.sub(convert_json_string, original_text)
+        if converted_text == original_text:
             return source_path
 
         converted_path = os.path.join(
             self.unittest_base_path, f"ltc-fixture-{wallet_name}"
         )
         with open(converted_path, "w", encoding="utf-8") as f:
-            json.dump(converted_data, f)
+            f.write(converted_text)
         return converted_path
 
 

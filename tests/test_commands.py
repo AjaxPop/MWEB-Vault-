@@ -629,6 +629,7 @@ class TestCommandsTestnet(ElectrumTestCase):
                     'inputs': [
                         {
                             'coinbase': False,
+                            'pegout': False,
                             'nsequence': 4294967293,
                             'prevout_hash': 'd42f6de015d93e6cd573ec8ae5ef6f87c4deb3763b0310e006d26c30d8800c67',
                             'prevout_n': 0,

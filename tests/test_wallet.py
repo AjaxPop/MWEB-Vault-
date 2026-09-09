@@ -94,7 +94,7 @@ class TestWalletStorage(WalletTestCase):
     async def test_storage_imported_add_privkeys_persistence_test(self):
         text = ' '.join([
             'p2wpkh:TAa25Tq4PdzhDKBoVaFaCdV3yxvLrRikQviNkuFQLeYopsVvNTV3',
-            'p2wpkh:L24GxnN7NNUAfCXA6hFzB1jt59fYAAiFZMcLaJ2ZSawGpM3uqhb1'
+            'p2wpkh:T7tYQXfHmkSmS3A2eLCrPNHG21JrEFj9NZWbS6f71Z7SLEgRqD97'
         ])
         d = restore_wallet_from_text__for_unittest(text, path=self.wallet_path, config=self.config)
         wallet = d['wallet']  # type: Imported_Wallet
@@ -105,7 +105,7 @@ class TestWalletStorage(WalletTestCase):
         del wallet
         wallet = Daemon._load_wallet(self.wallet_path, password=None, config=self.config)
 
-        wallet.import_private_keys(['p2wpkh:KzuqaaLp9zYjVuj8vQtCwFdiZFreW3NJNBachgVS8S9XMgj5y78b'], password=None)
+        wallet.import_private_keys(['p2wpkh:T6k72KdzZNXLGkN1U3q59cB6W7Vxa8PCBPUsZV7yhQKgsaFSu28Y'], password=None)
         self.assertEqual(3, len(wallet.get_receiving_addresses()))
         self.assertEqual(3, len(wallet.keystore.keypairs))
         await wallet.stop()
@@ -125,7 +125,7 @@ class TestWalletStorage(WalletTestCase):
         wallet1 = d['wallet']  # type: Standard_Wallet
         # create payreq
         addr = wallet1.get_unused_address()
-        self.assertEqual("1NNkttn1YvVGdqBW4PR6zvc3Zx3H5owKRf", addr)
+        self.assertEqual("LgbiA75qdajKtdsfEXQQGwfonAQZEEEbjS", addr)
         pr_key = wallet1.create_request(amount_sat=10000, message="msg", address=addr, exp_delay=86400)
         pr = wallet1.get_request(pr_key)
         self.assertIsNotNone(pr)
@@ -174,7 +174,8 @@ class FakeWallet:
         self.fiat_value = fiat_value
         self.db = WalletDB('', storage=None, upgrade=False)
         self.adb = FakeADB()
-        self.db.transactions = self.db.verified_tx = {'abc':'Tx'}
+        self.db.transactions = {'abc': mock.Mock()}
+        self.db.verified_tx = {'abc': 'Tx'}
 
     default_fiat_value = Abstract_Wallet.default_fiat_value
     price_at_timestamp = Abstract_Wallet.price_at_timestamp

@@ -217,6 +217,7 @@ class Test_bitcoin(ElectrumTestCase):
         sig2_b64 = base64.b64encode(sig2)
 
         self.assertEqual(sig1_b64, b'ICzNsKuXKK99r36McDcxN8YpB3Bwe+wZpCIeiSCIv0IMMdY1gFymqipODrpO5E9qff3+qtqib7X8zOKQKiGD5pA=')
+        print(f'actual Litecoin sig2_b64: {sig2_b64!r}')
         self.assertEqual(sig2_b64, b'G777Nqh3YlTVpWqGxSSVHtX013bTzdU/lmgzrRVuL6qYGnpd87PyI9T/LIZvbq7KdfPK2A5Ij1xUkujZwR1sl6M=')
 
         self.assertTrue(bitcoin.verify_usermessage_with_address(addr1, sig1, msg1))
@@ -936,6 +937,7 @@ class Test_xprv_xpub_testnet(ElectrumTestCase):
             'p2wsh-p2sh':  'Uprv',
             'p2wpkh':      'vprv',
             'p2wsh':       'Vprv',
+            'mweb':        'nprv',
         }
         xpub_headers_b58 = {
             'standard':    'tpub',
@@ -943,6 +945,7 @@ class Test_xprv_xpub_testnet(ElectrumTestCase):
             'p2wsh-p2sh':  'Upub',
             'p2wpkh':      'vpub',
             'p2wsh':       'Vpub',
+            'mweb':        'npub',
         }
         for xtype, xkey_header_bytes in constants.net.XPRV_HEADERS.items():
             xkey_header_bytes = bfh("%08x" % xkey_header_bytes)
