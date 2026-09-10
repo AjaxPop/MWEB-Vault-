@@ -245,7 +245,10 @@ class TestHistoryExport(ElectrumTestCase):
         daemon = Daemon(config=c, listen_jsonrpc=False)
         test_wallet_name = "client_4_5_2_9dk_with_ln"  # has labels, local tx, ln tx
         wallet_path = self.get_wallet_file_path(test_wallet_name)
-        test_wallet = daemon.load_wallet(wallet_path, None, upgrade=True)
+        # Preserve the original signed Bitcoin-testnet BOLT11 invoices in this historical fixture.
+        # The HRP is part of the signature, so validate the fixture as 'tb' only while loading it.
+        with mock.patch('electrum.constants.BitcoinTestnet.BOLT11_HRP', 'tb'):
+            test_wallet = daemon.load_wallet(wallet_path, None, upgrade=True)
         self.assertTrue(daemon.fx.has_history())
         mock_run_hook.return_value = False
 
