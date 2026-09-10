@@ -8,6 +8,9 @@ on:
     branches:
       - ci-build-mwebd
 
+permissions:
+  contents: write
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -16,7 +19,52 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          ref: ci-build-mwebd
+          fetch-depth: 0
+
+      - name: Apply fixture scanner fix
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path("tests/__init__.py")
+          text = path.read_text(encoding="utf-8")
+          marker = "escaped_backslash = re.escape(chr(92))"
+          if marker not in text:
+              lines = text.splitlines(keepends=True)
+              matches = [
+                  i for i, line in enumerate(lines)
+                  if line.strip().startswith("json_string_re = re.compile(")
+              ]
+              if len(matches) != 1:
+                  raise SystemExit(
+                      f"expected exactly one json_string_re assignment, found {len(matches)}"
+                  )
+              i = matches[0]
+              indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
+              lines[i:i + 1] = [
+                  f"{indent}escaped_backslash = re.escape(chr(92))\n",
+                  f"{indent}json_string_re = re.compile(\n",
+                  f"{indent}    '\"' + '([^\"' + escaped_backslash + ']*(?:'\n",
+                  f"{indent}    + escaped_backslash + '.[^\"' + escaped_backslash + ']*)*)' + '\"'\n",
+                  f"{indent})\n",
+              ]
+              path.write_text("".join(lines), encoding="utf-8")
+          PY
+
+          python -m py_compile tests/__init__.py
+          git diff --check
+
+          if ! git diff --quiet -- tests/__init__.py; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tests/__init__.py
+            git diff --cached --check
+            git commit -m "tests: fix historical wallet fixture scanner regex"
+            git push origin HEAD:ci-build-mwebd
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -44,5 +92,9 @@ jobs:
           pip install -r contrib/requirements/requirements-ci.txt
           pip install ".[tests]"
 
-      - name: Run isolated signature test
-        run: pytest tests/test_bitcoin.py::Test_bitcoin::test_signmessage_legacy_address -q --tb=short
+      - name: Run fixture conversion diagnostics
+        run: |
+          pytest \
+            tests/test_storage_upgrade.py \
+            tests/test_commands.py::TestCommandsTestnet::test_onchain_history \
+            -q --tb=short --maxfail=20
