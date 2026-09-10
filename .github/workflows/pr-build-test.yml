@@ -6,10 +6,7 @@ on:
       - main
   push:
     branches:
-      - ci-build-mwebd
-
-permissions:
-  contents: write
+      - main
 
 jobs:
   build-test:
@@ -19,70 +16,60 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ci-build-mwebd
-          fetch-depth: 0
-
-      - name: Apply historical BOLT11 fixture compatibility
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          python <<'PY'
-          from pathlib import Path
-
-          path = Path("tests/test_storage_upgrade.py")
-          text = path.read_text(encoding="utf-8")
-          marker = 'old_bolt11_hrp = constants.BitcoinTestnet.BOLT11_HRP'
-          if marker not in text:
-              old = '''        wallet_str = self._get_wallet_str()\n        await self._upgrade_storage(wallet_str)\n\n##########\n'''
-              new = '''        wallet_str = self._get_wallet_str()\n        # Preserve the original signed Bitcoin-testnet BOLT11 invoices in this\n        # historical migration fixture. The HRP is part of the invoice signature,\n        # so rewriting lntb to lntltc would invalidate the artifact.\n        old_bolt11_hrp = constants.BitcoinTestnet.BOLT11_HRP\n        try:\n            constants.BitcoinTestnet.BOLT11_HRP = "tb"\n            await self._upgrade_storage(wallet_str)\n        finally:\n            constants.BitcoinTestnet.BOLT11_HRP = old_bolt11_hrp\n\n##########\n'''
-              if text.count(old) != 1:
-                  raise SystemExit(
-                      f"expected exactly one target upgrade block, found {text.count(old)}"
-                  )
-              path.write_text(text.replace(old, new), encoding="utf-8")
-          PY
-
-          python -m py_compile tests/test_storage_upgrade.py
-          git diff --check
-
-          if ! git diff --quiet -- tests/test_storage_upgrade.py; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add tests/test_storage_upgrade.py
-            git diff --cached --check
-            git commit -m "tests: preserve historical BOLT11 invoice during upgrade"
-            git push origin HEAD:ci-build-mwebd
-          fi
+          submodules: recursive
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: contrib/mwebd/go.mod
+          cache-dependency-path: contrib/mwebd/go.sum
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y automake libtool
+          sudo apt-get install -y \
+            automake \
+            libtool \
+            libgl1 \
+            libegl1 \
+            libxkbcommon0 \
+            libdbus-1-3
 
       - name: Upgrade pip
-        run: python -m pip install --upgrade pip setuptools wheel
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
 
       - name: Build libsecp256k1
-        run: ./contrib/make_libsecp256k1.sh
+        run: |
+          ./contrib/make_libsecp256k1.sh
 
       - name: Configure libsecp256k1 runtime path
-        run: echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/electrum${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+        run: |
+          echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/electrum${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+
+      - name: Build mwebd
+        run: |
+          ./contrib/make_mwebd.sh
 
       - name: Install test dependencies
         env:
           ELECTRUM_ECC_DONT_COMPILE: "1"
         run: |
           pip install -r contrib/requirements/requirements-ci.txt
-          pip install ".[tests]"
+          pip install ".[tests,qml_gui]"
 
-      - name: Run fixture conversion diagnostics
+      - name: Verify MWEB Vault imports
         run: |
-          pytest \
-            tests/test_storage_upgrade.py \
-            tests/test_commands.py::TestCommandsTestnet::test_onchain_history \
-            -q --tb=short --maxfail=20
+          python -c "import electrum; print('MWEB Vault import successful')"
+
+      - name: Compile Python source
+        run: |
+          python -m compileall -q electrum
+
+      - name: Run unit tests
+        run: pytest tests -vv --maxfail=20
