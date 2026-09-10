@@ -8,9 +8,6 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -19,41 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ci-build-mwebd
           submodules: recursive
-
-      - name: Apply history-export BOLT11 fixture compatibility
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("tests/test_wallet.py")
-          text = path.read_text(encoding="utf-8")
-          old = "        test_wallet = daemon.load_wallet(wallet_path, None, upgrade=True)\n"
-          new = (
-              "        # Preserve the original signed Bitcoin-testnet BOLT11 invoices in this historical fixture.\n"
-              "        # The HRP is part of the signature, so validate the fixture as 'tb' only while loading it.\n"
-              "        with mock.patch('electrum.constants.BitcoinTestnet.BOLT11_HRP', 'tb'):\n"
-              "            test_wallet = daemon.load_wallet(wallet_path, None, upgrade=True)\n"
-          )
-          if old not in text:
-              if new in text:
-                  print("history-export compatibility patch already present")
-              else:
-                  raise SystemExit("target daemon.load_wallet line not found")
-          else:
-              if text.count(old) != 1:
-                  raise SystemExit(f"expected exactly one target line, found {text.count(old)}")
-              path.write_text(text.replace(old, new, 1), encoding="utf-8")
-          PY
-          git diff --check
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests/test_wallet.py
-          if ! git diff --cached --quiet; then
-            git commit -m "tests: preserve historical BOLT11 history fixture"
-            git push origin HEAD:ci-build-mwebd
-          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -109,4 +72,4 @@ jobs:
           python -m compileall -q electrum
 
       - name: Run unit tests
-        run: pytest tests -q --tb=short --maxfail=1
+        run: pytest tests -vv --maxfail=20
