@@ -1,9 +1,12 @@
 from io import StringIO
+import json
 import os
 import sys
 
+from electrum import constants, segwit_addr
 from electrum.bitcoin import address_to_script
 from electrum.fee_policy import FixedFeePolicy
+from electrum.mwebd import set_mwebd_config
 from electrum.simple_config import SimpleConfig
 from electrum.storage import WalletStorage
 from electrum.transaction import PartialTxOutput
@@ -18,9 +21,16 @@ from .. import ElectrumTestCase
 class TestTimelockRecovery(ElectrumTestCase):
     TESTNET = True
 
+    ALERT_ADDRESS = 'tltc1qchyc02y9mv4xths4je9puc4yzuxt8rfmnjmhlh'
+    CANCELLATION_ADDRESS = 'tltc1q6k5h4cz6ra8nzhg90xm9wldvadgh0fptjpffgp'
+
     def setUp(self):
         super(TestTimelockRecovery, self).setUp()
-        self.config = SimpleConfig({'electrum_path': self.electrum_path})
+        self.config = SimpleConfig({
+            'electrum_path': self.electrum_path,
+            'testnet': True,
+        })
+        set_mwebd_config(self.config)
 
         self.wallet_path = os.path.join(self.electrum_path, "timelock_recovery_wallet")
 
@@ -33,9 +43,39 @@ class TestTimelockRecovery(ElectrumTestCase):
         # Restore the "real" stdout
         sys.stdout = self._saved_stdout
 
+    @staticmethod
+    def _convert_bitcoin_testnet_fixture(value):
+        """Convert Bitcoin-testnet bech32 addresses in the inherited fixture to Litecoin testnet.
+
+        Re-encoding the same witness program with Litecoin's testnet HRP changes only the
+        human-readable address and checksum. The underlying scriptPubKey is unchanged,
+        so the transaction data in the historical fixture remains valid for these tests.
+        """
+        if isinstance(value, dict):
+            return {
+                TestTimelockRecovery._convert_bitcoin_testnet_fixture(key):
+                    TestTimelockRecovery._convert_bitcoin_testnet_fixture(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [TestTimelockRecovery._convert_bitcoin_testnet_fixture(item) for item in value]
+        if isinstance(value, str) and value.lower().startswith('tb1'):
+            witver, witprog = segwit_addr.decode_segwit_address('tb', value)
+            if witprog is not None:
+                converted = segwit_addr.encode_segwit_address(
+                    constants.BitcoinTestnet.SEGWIT_HRP,
+                    witver,
+                    bytes(witprog),
+                )
+                if converted is not None:
+                    return converted
+        return value
+
     def _create_default_wallet(self):
         with open(os.path.join(os.path.dirname(__file__), "test_timelock_recovery", "default_wallet"), "r") as f:
-            wallet_str = f.read()
+            wallet_data = json.load(f)
+        wallet_data = self._convert_bitcoin_testnet_fixture(wallet_data)
+        wallet_str = json.dumps(wallet_data)
         storage = WalletStorage(self.wallet_path)
         db = WalletDB(wallet_str, storage=storage, upgrade=True)
         wallet = Wallet(db, config=self.config)
@@ -46,7 +86,7 @@ class TestTimelockRecovery(ElectrumTestCase):
 
         context = TimelockRecoveryContext(wallet)
         alert_address = context.get_alert_address()
-        self.assertEqual(alert_address, 'tb1qchyc02y9mv4xths4je9puc4yzuxt8rfm26ef07')
+        self.assertEqual(alert_address, self.ALERT_ADDRESS)
 
     async def test_get_cancellation_address(self):
         wallet = self._create_default_wallet()
@@ -54,7 +94,7 @@ class TestTimelockRecovery(ElectrumTestCase):
         context = TimelockRecoveryContext(wallet)
         context.get_alert_address()
         cancellation_address = context.get_cancellation_address()
-        self.assertEqual(cancellation_address, 'tb1q6k5h4cz6ra8nzhg90xm9wldvadgh0fpttfthcg')
+        self.assertEqual(cancellation_address, self.CANCELLATION_ADDRESS)
 
     async def test_make_unsigned_alert_tx(self):
         wallet = self._create_default_wallet()
@@ -74,7 +114,7 @@ class TestTimelockRecovery(ElectrumTestCase):
         alert_tx_outputs = [(tx_output.address, tx_output.value) for tx_output in alert_tx.outputs()]
         self.assertEqual(alert_tx_outputs, [
             ('tltc1q4s8z6g5jqzllkgt8a4har94wl8tg0k9m77w2jy', 600),
-            ('tb1qchyc02y9mv4xths4je9puc4yzuxt8rfm26ef07', 743065),
+            (self.ALERT_ADDRESS, 743065),
         ])
         self.assertEqual(alert_tx.txid(), '01c227f136c4490ec7cb0fe2ba5e44c436f58906b7fc29a83cb865d7e3bfaa60')
 
@@ -119,7 +159,7 @@ class TestTimelockRecovery(ElectrumTestCase):
         self.assertEqual(cancellation_tx.inputs()[0].nsequence, 0xfffffffd)
         cancellation_tx_outputs = [(tx_output.address, tx_output.value) for tx_output in cancellation_tx.outputs()]
         self.assertEqual(cancellation_tx_outputs, [
-            ('tb1q6k5h4cz6ra8nzhg90xm9wldvadgh0fpttfthcg', 737065),
+            (self.CANCELLATION_ADDRESS, 737065),
         ])
 
     def test_checksum_non_ascii(self):

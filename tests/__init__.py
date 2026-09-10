@@ -6,11 +6,12 @@ import tempfile
 import shutil
 import functools
 import inspect
+import re
 from typing import TYPE_CHECKING, List
 
 import electrum
 import electrum.logging
-from electrum import constants
+from electrum import bitcoin, constants, segwit_addr
 from electrum import util
 from electrum.util import OldTaskGroup
 from electrum.logging import Logger
@@ -30,6 +31,55 @@ FAST_TESTS = False
 electrum.logging._configure_stderr_logging(verbosity="*")
 
 electrum.util.AS_LIB_USER_I_WANT_TO_MANAGE_MY_OWN_ASYNCIO_LOOP = True
+
+
+
+def _convert_legacy_bitcoin_wallet_fixture_address(value):
+    """Re-encode inherited Bitcoin wallet-fixture addresses for Litecoin tests."""
+    if not isinstance(value, str):
+        return value
+
+    lower = value.lower()
+    for old_hrp, new_hrp in (("bc", "ltc"), ("tb", "tltc")):
+        if lower.startswith(old_hrp + "1"):
+            witver, witprog = segwit_addr.decode_segwit_address(old_hrp, value)
+            if witprog is None:
+                return value
+            converted = segwit_addr.encode_segwit_address(
+                new_hrp, witver, bytes(witprog)
+            )
+            return converted if converted is not None else value
+
+    try:
+        payload = bitcoin.DecodeBase58Check(value)
+    except Exception:
+        return value
+    if len(payload) != 21:
+        return value
+
+    # Bitcoin mainnet P2PKH/P2SH and Bitcoin-testnet P2SH use different
+    # display prefixes from Litecoin. Testnet P2PKH uses 111 on both chains.
+    version_map = {
+        0: constants.BitcoinMainnet.ADDRTYPE_P2PKH,
+        5: constants.BitcoinMainnet.ADDRTYPE_P2SH,
+        196: constants.BitcoinTestnet.ADDRTYPE_P2SH,
+    }
+    new_version = version_map.get(payload[0])
+    if new_version is None or new_version == payload[0]:
+        return value
+    return bitcoin.EncodeBase58Check(bytes([new_version]) + payload[1:])
+
+
+def _convert_legacy_bitcoin_wallet_fixture(value):
+    if isinstance(value, dict):
+        return {
+            _convert_legacy_bitcoin_wallet_fixture_address(key):
+                _convert_legacy_bitcoin_wallet_fixture(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_convert_legacy_bitcoin_wallet_fixture(item) for item in value]
+    return _convert_legacy_bitcoin_wallet_fixture_address(value)
 
 
 class ElectrumTestCase(unittest.IsolatedAsyncioTestCase, Logger):
@@ -112,7 +162,47 @@ class ElectrumTestCase(unittest.IsolatedAsyncioTestCase, Logger):
         return lnwallet
 
     def get_wallet_file_path(self, wallet_name: str) -> str:
-        return os.path.join(self.WALLET_FILES_DIR, wallet_name)
+        source_path = os.path.join(self.WALLET_FILES_DIR, wallet_name)
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                original_text = f.read()
+        except OSError:
+            return source_path
+
+        # Wallet files can be an initial JSON document followed by newline-delimited
+        # JSON-patch entries. Work on JSON string tokens in the raw text so the
+        # journal, tx hex, hashes, keys, and other historical material stay intact.
+        escaped_backslash = re.escape(chr(92))
+        json_string_re = re.compile(
+            '"' + '([^"' + escaped_backslash + ']*(?:'
+            + escaped_backslash + '.[^"' + escaped_backslash + ']*)*)' + '"'
+        )
+
+        def convert_json_string(match):
+            value = match.group(1)
+            if chr(92) in value:
+                return match.group(0)
+            # Patch paths can contain addresses as slash-separated path segments.
+            parts = value.split("/")
+            converted_parts = [
+                _convert_legacy_bitcoin_wallet_fixture_address(part)
+                for part in parts
+            ]
+            converted = "/".join(converted_parts)
+            if converted == value:
+                return match.group(0)
+            return f'"{converted}"'
+
+        converted_text = json_string_re.sub(convert_json_string, original_text)
+        if converted_text == original_text:
+            return source_path
+
+        converted_path = os.path.join(
+            self.unittest_base_path, f"ltc-fixture-{wallet_name}"
+        )
+        with open(converted_path, "w", encoding="utf-8") as f:
+            f.write(converted_text)
+        return converted_path
 
 
 def as_testnet(func):
@@ -138,9 +228,38 @@ def as_testnet(func):
     return run_test
 
 
+def _convert_legacy_testnet_address_import(text):
+    """Re-encode inherited Bitcoin-testnet address-only wallet imports for Litecoin testnet.
+
+    Electrum-LTC inherited a few tests that import whitespace-separated ``tb1`` addresses.
+    The witness programs are network-independent; only the human-readable prefix and checksum
+    need to be re-encoded. Keep this deliberately narrow so seeds, keys, negative vectors, and
+    mixed input are never rewritten behind a test's back.
+    """
+    if not isinstance(text, str) or constants.net.SEGWIT_HRP != 'tltc':
+        return text
+    tokens = text.split()
+    if not tokens or not all(token.lower().startswith('tb1') for token in tokens):
+        return text
+    converted = []
+    for token in tokens:
+        witver, witprog = segwit_addr.decode_segwit_address('tb', token)
+        if witprog is None:
+            return text
+        address = segwit_addr.encode_segwit_address('tltc', witver, bytes(witprog))
+        if address is None:
+            return text
+        converted.append(address)
+    return ' '.join(converted)
+
+
 @functools.wraps(restore_wallet_from_text)
 def restore_wallet_from_text__for_unittest(*args, gap_limit=2, gap_limit_for_change=1, **kwargs):
     """much lower default gap limits (to save compute time)"""
+    if args:
+        args = (_convert_legacy_testnet_address_import(args[0]), *args[1:])
+    elif 'text' in kwargs:
+        kwargs['text'] = _convert_legacy_testnet_address_import(kwargs['text'])
     return restore_wallet_from_text(
         *args,
         gap_limit=gap_limit,

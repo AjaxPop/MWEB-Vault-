@@ -231,8 +231,8 @@ class TestWalletKeystoreAddressIntegrityForMainnet(ElectrumTestCase):
         w = WalletIntegrityHelper.create_multisig_wallet([ks1, ks2, ks3], '2of3', config=self.config)
         self.assertEqual(w.txin_type, 'p2sh')
 
-        self.assertEqual(w.get_receiving_addresses()[0], '3Bw5jczNModhFAbvfwvUHbdGrC2Lh2qRQp')
-        self.assertEqual(w.get_change_addresses()[0], '3Ke6pKrmtSyyQaMob1ES4pk8siAAkRmst9')
+        self.assertEqual(w.get_receiving_addresses()[0], 'MJ9E3WQLJvV83fspmpup7EsgAtcnabsLi7')
+        self.assertEqual(w.get_change_addresses()[0], 'MRrF8DGjqZqQD5dhgtDmtTzYCQkchV2JYT')
 
     @mock.patch.object(wallet.Abstract_Wallet, 'save_db')
     async def test_electrum_seed_2fa_legacy_pre27_24words(self, mock_save_db):
@@ -267,8 +267,8 @@ class TestWalletKeystoreAddressIntegrityForMainnet(ElectrumTestCase):
         w = WalletIntegrityHelper.create_multisig_wallet([ks1, ks2, ks3], '2of3', config=self.config)
         self.assertEqual(w.txin_type, 'p2sh')
 
-        self.assertEqual(w.get_receiving_addresses()[0], '39XK9VBGiK4bqNJYrajfKE8C1ky4gYA5Zy')
-        self.assertEqual(w.get_change_addresses()[0], '3PKtHrjiKdsZ73ULZ4Sf1vDBnrUoAEtLDe')
+        self.assertEqual(w.get_receiving_addresses()[0], 'MFjTTNbEfRv2dsaSxTj18sNbLTZWggpXsi')
+        self.assertEqual(w.get_change_addresses()[0], 'MVY2bk9gGkiyuYkEewRzqZTb7Z5FBZgLTu')
 
     @mock.patch.object(wallet.Abstract_Wallet, 'save_db')
     async def test_electrum_seed_2fa_legacy_post27(self, mock_save_db):
@@ -302,8 +302,8 @@ class TestWalletKeystoreAddressIntegrityForMainnet(ElectrumTestCase):
         w = WalletIntegrityHelper.create_multisig_wallet([ks1, ks2, ks3], '2of3', config=self.config)
         self.assertEqual(w.txin_type, 'p2sh')
 
-        self.assertEqual(w.get_receiving_addresses()[0], '35L8XmCDoEBKeaWRjvmZvoZvhp8BXMMMPV')
-        self.assertEqual(w.get_change_addresses()[0], '3PeZEcumRqHSPNN43hd4yskGEBdzXgY8Cy')
+        self.assertEqual(w.get_receiving_addresses()[0], 'MBYGqecBkM2kT5nKqokukSpL2WidauKrDi')
+        self.assertEqual(w.get_change_addresses()[0], 'MVrhYWKjNx8sBsdx9acQoWzfYtESZAcsCV')
 
     @mock.patch.object(wallet.Abstract_Wallet, 'save_db')
     async def test_electrum_seed_2fa_segwit(self, mock_save_db):
@@ -336,8 +336,8 @@ class TestWalletKeystoreAddressIntegrityForMainnet(ElectrumTestCase):
         w = WalletIntegrityHelper.create_multisig_wallet([ks1, ks2, ks3], '2of3', config=self.config)
         self.assertEqual(w.txin_type, 'p2wsh')
 
-        self.assertEqual(w.get_receiving_addresses()[0], 'bc1qpmufh0zjp5prfsrk2yskcy82sa26srqkd97j0457andc6m0gh5asw7kqd2')
-        self.assertEqual(w.get_change_addresses()[0], 'bc1qd4q50nft7kxm9yglfnpup9ed2ukj3tkxp793y0zya8dc9m39jcwq308dxz')
+        self.assertEqual(w.get_receiving_addresses()[0], 'ltc1qpmufh0zjp5prfsrk2yskcy82sa26srqkd97j0457andc6m0gh5asd6csh0')
+        self.assertEqual(w.get_change_addresses()[0], 'ltc1qd4q50nft7kxm9yglfnpup9ed2ukj3tkxp793y0zya8dc9m39jcwqjtfau8')
 
     @mock.patch.object(wallet.Abstract_Wallet, 'save_db')
     async def test_bip39_seed_bip44_standard(self, mock_save_db):
@@ -699,8 +699,8 @@ class TestWalletKeystoreAddressIntegrityForMainnet(ElectrumTestCase):
         w = WalletIntegrityHelper.create_standard_wallet(ks, config=self.config)
         self.assertEqual(w.txin_type, 'p2pkh')
 
-        self.assertEqual(w.get_receiving_addresses()[0], '1N4hqJRTVqUbwT5WCbbsQSwKRPPPzG1TSo')
-        self.assertEqual(w.get_change_addresses()[0], '1FW3QQzbYRSUoNDDYGWPvSCoom8fBhPC9k')
+        self.assertEqual(w.get_receiving_addresses()[0], 'LgHf6WjHaVifCFmfNjbAgU15dbkg8DBcrh')
+        self.assertEqual(w.get_change_addresses()[0], 'LZizfdJRd5gY4AuNiQVhCTGa1yVwJVkmq2')
 
     @mock.patch.object(wallet.Abstract_Wallet, 'save_db')
     async def test_slip39_extendable_basic_2of5_bip49_p2sh_segwit(self, mock_save_db):
@@ -725,8 +725,8 @@ class TestWalletKeystoreAddressIntegrityForMainnet(ElectrumTestCase):
         w = WalletIntegrityHelper.create_standard_wallet(ks, config=self.config)
         self.assertEqual(w.txin_type, 'p2wpkh-p2sh')
 
-        self.assertEqual(w.get_receiving_addresses()[0], '38diDMcH7japAtpJjVKviBroQfTdvgpdqX')
-        self.assertEqual(w.get_change_addresses()[0], '36Hd2PnEvJpN9pUdhpZWh3aQccbRp46FVc')
+        self.assertEqual(w.get_receiving_addresses()[0], 'MEqrXF2F4rSEyQ6CqNKGXq7CjN45w8gvqi')
+        self.assertEqual(w.get_change_addresses()[0], 'MCVmLHCCsRfnxKkXohYrWgpowKBsqEuw3k')
 
     @mock.patch.object(wallet.Abstract_Wallet, 'save_db')
     async def test_slip39_extendable_groups_128bit_bip84_native_segwit(self, mock_save_db):
@@ -755,8 +755,8 @@ class TestWalletKeystoreAddressIntegrityForMainnet(ElectrumTestCase):
         w = WalletIntegrityHelper.create_standard_wallet(ks, config=self.config)
         self.assertEqual(w.txin_type, 'p2wpkh')
 
-        self.assertEqual(w.get_receiving_addresses()[0], 'bc1qs2svwhfz47qv9qju2waa6prxzv5f522fc4p06t')
-        self.assertEqual(w.get_change_addresses()[0], 'bc1qmjq5nenac3vjwltldk5qsq4yd8mttw2dpkmx06')
+        self.assertEqual(w.get_receiving_addresses()[0], 'ltc1qs2svwhfz47qv9qju2waa6prxzv5f522fufmtzm')
+        self.assertEqual(w.get_change_addresses()[0], 'ltc1qmjq5nenac3vjwltldk5qsq4yd8mttw2d92pzh2')
 
     @mock.patch.object(wallet.Abstract_Wallet, 'save_db')
     async def test_slip39_extendable_groups_256bit_bip49_p2sh_segwit(self, mock_save_db):
@@ -783,8 +783,8 @@ class TestWalletKeystoreAddressIntegrityForMainnet(ElectrumTestCase):
         w = WalletIntegrityHelper.create_standard_wallet(ks, config=self.config)
         self.assertEqual(w.txin_type, 'p2wpkh-p2sh')
 
-        self.assertEqual(w.get_receiving_addresses()[0], '3JDN4wF5BphZqcJFFYuDA7N1apzfPYyJLG')
-        self.assertEqual(w.get_change_addresses()[0], '3J8zNvhJndqzBcuPuarzUn1kWs9N4ZY7HS')
+        self.assertEqual(w.get_receiving_addresses()[0], 'MQRWNpf38wYze7a9MRtYykcQuXb7U6LH87')
+        self.assertEqual(w.get_change_addresses()[0], 'MQM8gp7GjkhQz8BJ1TrLJRG9qZjp1MDzTf')
 
 class TestWalletKeystoreAddressIntegrityForTestnet(ElectrumTestCase):
     TESTNET = True

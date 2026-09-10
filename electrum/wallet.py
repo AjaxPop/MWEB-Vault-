@@ -2485,6 +2485,7 @@ class Abstract_Wallet(ABC, Logger, EventListener):
                 inputs=old_inputs,
                 outputs=fixed_outputs,
                 change_addrs=change_addrs,
+                keystore=self.keystore,
                 fee_estimator_vb=fee_estimator,
                 dust_threshold=self.dust_threshold())
         except NotEnoughFunds as e:

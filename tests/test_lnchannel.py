@@ -369,29 +369,29 @@ class TestChannel(ElectrumTestCase):
         if not alice_channel.has_anchors():
             # ctx outputs are ordered by increasing amounts
             low_amt_idx = 0
-            assert len(alice_out[low_amt_idx].address) == 62  # p2wsh
+            assert alice_out[low_amt_idx].scriptpubkey[:2] == b'\x00\x20'  # p2wsh
             high_amt_idx = 1
-            assert len(alice_out[high_amt_idx].address) == 42  # p2wpkh
+            assert alice_out[high_amt_idx].scriptpubkey[:2] == b'\x00\x14'  # p2wpkh
         else:
             # using anchor outputs, all outputs are p2wsh
             low_amt_idx = 2
-            assert len(alice_out[low_amt_idx].address) == 62
+            assert alice_out[low_amt_idx].scriptpubkey[:2] == b'\x00\x20'
             high_amt_idx = 3
-            assert len(alice_out[high_amt_idx].address) == 62
+            assert alice_out[high_amt_idx].scriptpubkey[:2] == b'\x00\x20'
         self.assertLess(alice_out[low_amt_idx].value, 5 * 10**8, alice_out)
         self.assertEqual(alice_out[high_amt_idx].value, 5 * 10**8, alice_out)
 
         alice_out = alice_channel.get_latest_commitment(REMOTE).outputs()
         if not alice_channel.has_anchors():
             low_amt_idx = 0
-            assert len(alice_out[low_amt_idx].address) == 42
+            assert alice_out[low_amt_idx].scriptpubkey[:2] == b'\x00\x14'
             high_amt_idx = 1
-            assert len(alice_out[high_amt_idx].address) == 62
+            assert alice_out[high_amt_idx].scriptpubkey[:2] == b'\x00\x20'
         else:
             low_amt_idx = 2
-            assert len(alice_out[low_amt_idx].address) == 62
+            assert alice_out[low_amt_idx].scriptpubkey[:2] == b'\x00\x20'
             high_amt_idx = 3
-            assert len(alice_out[high_amt_idx].address) == 62
+            assert alice_out[high_amt_idx].scriptpubkey[:2] == b'\x00\x20'
         self.assertLess(alice_out[low_amt_idx].value, 5 * 10**8)
         self.assertEqual(alice_out[high_amt_idx].value, 5 * 10**8)
 
@@ -938,8 +938,8 @@ class TestChanReserve(ElectrumTestCase):
         # balance (while still being below his channel reserve).
         #
         # Resulting balances:
-        #	Alice:	4.5
-        #	Bob:	5.0
+        #\tAlice:\t4.5
+        #\tBob:\t5.0
         paymentPreimage = b"\x01" * 32
         paymentHash = bitcoin.sha256(paymentPreimage)
         htlc = UpdateAddHtlc(
@@ -964,8 +964,8 @@ class TestChanReserve(ElectrumTestCase):
         # decrease his balance, which is already below the channel reserve.
         #
         # Resulting balances:
-        #	Alice:	4.5
-        #	Bob:	5.0
+        #\tAlice:\t4.5
+        #\tBob:\t5.0
         with self.assertRaises(lnutil.PaymentFailure):
             htlc = dataclasses.replace(htlc, payment_hash=bitcoin.sha256(32 * b'\x02'))
             self.bob_channel.add_htlc(htlc)
@@ -979,8 +979,8 @@ class TestChanReserve(ElectrumTestCase):
         # Alice's balance at 1.5 BTC.
         #
         # Resulting balances:
-        #	Alice:	1.5
-        #	Bob:	9.5
+        #\tAlice:\t1.5
+        #\tBob:\t9.5
         htlc = UpdateAddHtlc(
             payment_hash=paymentHash,
             amount_msat=int(3.5 * one_bitcoin_in_msat),
@@ -1001,8 +1001,8 @@ class TestChanReserve(ElectrumTestCase):
     def part3(self):
         # Add a HTLC of 2 BTC to Alice, and the settle it.
         # Resulting balances:
-        #	Alice:	3.0
-        #	Bob:	7.0
+        #\tAlice:\t3.0
+        #\tBob:\t7.0
         paymentPreimage = b"\x01" * 32
         paymentHash = bitcoin.sha256(paymentPreimage)
         htlc = UpdateAddHtlc(

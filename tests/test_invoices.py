@@ -226,7 +226,7 @@ class TestBaseInvoice(ElectrumTestCase):
 
     async def test_arg_validation(self):
         amount_sat = 10_000
-        outputs = [PartialTxOutput.from_address_and_value("tb1qmjzmg8nd4z56ar4fpngzsr6euktrhnjg9td385", amount_sat)]
+        outputs = [PartialTxOutput.from_address_and_value("tltc1qmjzmg8nd4z56ar4fpngzsr6euktrhnjgur00ha", amount_sat)]
         invoice = Invoice(
             amount_msat=amount_sat * 1000,
             message="mymsg",

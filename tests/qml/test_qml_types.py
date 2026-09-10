@@ -1,9 +1,11 @@
 import shutil
 import tempfile
+from decimal import Decimal
 
 from electrum import SimpleConfig
 from electrum.gui.qml.qetypes import QEAmount
 from electrum.invoices import Invoice, LN_EXPIRY_NEVER
+from electrum.lnaddr import LnAddr, lnencode
 from electrum.transaction import PartialTxOutput
 
 from .qt_util import QETestCase, QEventReceiver, qt_test
@@ -101,7 +103,7 @@ class TestTypes(QETestCase):
     @qt_test
     def test_qeamount_frominvoice(self):
         amount_sat = 10_000
-        outputs = [PartialTxOutput.from_address_and_value('bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293', amount_sat)]
+        outputs = [PartialTxOutput.from_address_and_value('ltc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqpraswap', amount_sat)]
         invoice = Invoice(
             amount_msat=amount_sat * 1000,
             message="mymsg",
@@ -116,7 +118,7 @@ class TestTypes(QETestCase):
         self.assertEqual(10_000_000, a.msatsInt)
         self.assertFalse(a.isMax)
 
-        outputs = [PartialTxOutput.from_address_and_value('bc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqp8p2293', '!')]
+        outputs = [PartialTxOutput.from_address_and_value('ltc1qj3zx2zc4rpv3npzmznxhdxzn0wm7pzqpraswap', '!')]
         invoice = Invoice(
             amount_msat='!',
             message="mymsg",
@@ -131,7 +133,15 @@ class TestTypes(QETestCase):
         self.assertEqual(0, a.satsInt)
         self.assertEqual(0, a.msatsInt)
 
-        bolt11 = 'lnbc20m1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqsfpp3qjmp7lwpagxun9pygexvgpjdc4jdj85fr9yq20q82gphp2nflc7jtzrcazrra7wwgzxqc8u7754cdlpfrmccae92qgzqvzq2ps8pqqqqqqpqqqqq9qqqvpeuqafqxu92d8lr6fvg0r5gv0heeeqgcrqlnm6jhphu9y00rrhy4grqszsvpcgpy9qqqqqqgqqqqq7qqzqj9n4evl6mr5aj9f58zp6fyjzup6ywn3x6sk8akg5v4tgn2q8g4fhx05wf6juaxu9760yp46454gpg5mtzgerlzezqcqvjnhjh8z3g2qqdhhwkj'
+        # Generate a native Litecoin BOLT11 invoice rather than relying on an inherited Bitcoin vector.
+        lnaddr = LnAddr(
+            paymenthash=bytes.fromhex('0001020304050607080900010203040506070809000102030405060708090102'),
+            payment_secret=bytes.fromhex('11' * 32),
+            amount=Decimal('0.02'),
+            tags=[('d', 'qml amount test'), ('9', 33282)],
+        )
+        bolt11 = lnencode(lnaddr, bytes.fromhex('e126f68f7eafcc8b74f54d269fe206be715000f94dac067d1c04a8ca3b2db734'))
+        self.assertTrue(bolt11.startswith('lnltc20m1'))
         invoice = Invoice.from_bech32(bolt11)
         a = QEAmount(from_invoice=invoice)
         self.assertEqual(2_000_000, a.satsInt)

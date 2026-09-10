@@ -68,7 +68,7 @@ SWAPDATA = SwapData(
     preimage=bytes.fromhex('f1939b5723155713855d7ebea6e174f77d41d669269e7f138856c3de190e7a36'),
     prepay_hash=None,
     privkey=bytes.fromhex('58fd0018a9a2737d1d6b81d380df96bf0c858473a9592015508a270a7c9b1d8d'),
-    lockup_address='tb1q2pvugjl4w56rqw4c7zg0q6mmmev0t5jjy3qzg7sl766phh9fxjxsrtl77t',
+    lockup_address='tltc1q2pvugjl4w56rqw4c7zg0q6mmmev0t5jjy3qzg7sl766phh9fxjxsugrlp5',
     claim_to_output=None,
     funding_txid='897eea7f53e917323e7472d7a2e3099173f7836c57f1b6850f5cbdfe8085dbf9',
     spending_txid=None,
@@ -154,7 +154,7 @@ class TestTxBatcher(ElectrumTestCase):
         # tx1 gets mined
         # txbatcher creates a new transaction tx2, child of tx1
         #
-        OUTGOING_ADDRESS = 'tb1q7rl9cxr85962ztnsze089zs8ycv52hk43f3m9n'
+        OUTGOING_ADDRESS = 'tltc1q7rl9cxr85962ztnsze089zs8ycv52hk4gpn946'
         wallet = self._create_wallet()
         # fund wallet
         funding_tx = Transaction(WALLET_DATA["funding_tx"])
@@ -206,14 +206,14 @@ class TestTxBatcher(ElectrumTestCase):
         self.logger.info(f'wallet balance1 {wallet.get_balance()}')
 
         # to_self_payment tx1
-        output1 = PartialTxOutput.from_address_and_value("tb1qyfnv3y866ufedugxxxfksyratv4pz3h78g9dad", 20_000)
+        output1 = PartialTxOutput.from_address_and_value("tltc1qyfnv3y866ufedugxxxfksyratv4pz3h77q8ndy", 20_000)
         wallet.txbatcher.add_payment_output('default', output1)
         tx1 = await self.network.next_tx()
         assert len(tx1.outputs()) == 2
         assert output1 in tx1.outputs()
 
         # outgoing payment tx2
-        output2 = PartialTxOutput.from_address_and_value("tb1qkfn0fude7z789uys2u7sf80kd4805zpvs3na0h", 90_000)
+        output2 = PartialTxOutput.from_address_and_value("tltc1qkfn0fude7z789uys2u7sf80kd4805zpvfe3rl7", 90_000)
         wallet.txbatcher.add_payment_output('default', output2)
         # before tx1 gets confirmed, txbatch.create_transaction will raise notenoughfunds
         await asyncio.sleep(wallet.txbatcher.SLEEP_INTERVAL)
@@ -243,7 +243,7 @@ class TestTxBatcher(ElectrumTestCase):
         self.assertEqual(SWAP_CLAIM_TX, str(tx))
         # add a new payment, reusing the same input
         # this tests that txin.make_witness() can be called more than once
-        output1 = PartialTxOutput.from_address_and_value("tb1qyfnv3y866ufedugxxxfksyratv4pz3h78g9dad", 20_000)
+        output1 = PartialTxOutput.from_address_and_value("tltc1qyfnv3y866ufedugxxxfksyratv4pz3h77q8ndy", 20_000)
         wallet.txbatcher.add_payment_output('default', output1)
         new_tx = await self.network.next_tx()
         # check that we batched with previous tx

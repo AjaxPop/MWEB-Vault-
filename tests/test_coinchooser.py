@@ -1,3 +1,4 @@
+from unittest import mock
 from electrum.coinchooser import CoinChooserPrivacy
 from electrum.util import NotEnoughFunds
 from electrum.transaction import PartialTxInput, TxOutpoint, Transaction, PartialTxOutput
@@ -28,7 +29,7 @@ class TestCoinChooser(ElectrumTestCase):
     @staticmethod
     def get_dummy_txout_1(amount: Optional[int] = 1000000) -> PartialTxOutput:
         output = PartialTxOutput.from_address_and_value(
-            address="bc1q2089yvkkyw7yq7m6a7lxt45n35c587hk4sgj7c",
+            address="ltc1q2089yvkkyw7yq7m6a7lxt45n35c587hk3vjkxg",
             value=amount,
         )
         return output
@@ -46,7 +47,8 @@ class TestCoinChooser(ElectrumTestCase):
         with self.assertRaises(NotEnoughFunds):
             coin_chooser.bucket_candidates_prefer_confirmed([], sufficient_funds)
 
-    def test_make_tx_no_outputs_adds_change(self):
+    @mock.patch('electrum.coinchooser.mwebd.create', side_effect=lambda tx, *_args, **_kwargs: (tx, 0))
+    def test_make_tx_no_outputs_adds_change(self, _mock_mwebd_create):
         coin_chooser = CoinChooserPrivacy(enable_output_value_rounding=False)
         fee_estimator = partial(FeePolicy('eta:2').estimate_fee, allow_fallback_to_static_rates=True)
 
@@ -64,7 +66,8 @@ class TestCoinChooser(ElectrumTestCase):
             coins=[coin],
             inputs=[single_txin],
             outputs=[],
-            change_addrs=["bc1q2089yvkkyw7yq7m6a7lxt45n35c587hk4sgj7c"],
+            change_addrs=["ltc1q2089yvkkyw7yq7m6a7lxt45n35c587hk3vjkxg"],
+            keystore=None,
             fee_estimator_vb=fee_estimator,
             dust_threshold=500,
         )
@@ -83,7 +86,8 @@ class TestCoinChooser(ElectrumTestCase):
             coins=[coin],
             inputs=[single_txin],
             outputs=[],
-            change_addrs=["bc1q2089yvkkyw7yq7m6a7lxt45n35c587hk4sgj7c"],
+            change_addrs=["ltc1q2089yvkkyw7yq7m6a7lxt45n35c587hk3vjkxg"],
+            keystore=None,
             fee_estimator_vb=fee_estimator,
             dust_threshold=500,
         )
@@ -91,7 +95,8 @@ class TestCoinChooser(ElectrumTestCase):
         assert len(tx.outputs()) == 1, f"expected 1 output got {len(tx.outputs())}"
         assert len(tx.inputs()) == 1, f"expected 1 input got {len(tx.inputs())}"
 
-    def test_doesnt_round_output_value_with_zerofee_estimator(self):
+    @mock.patch('electrum.coinchooser.mwebd.create', side_effect=lambda tx, *_args, **_kwargs: (tx, 0))
+    def test_doesnt_round_output_value_with_zerofee_estimator(self, _mock_mwebd_create):
         # output value rounding is enabled (as by default)
         coin_chooser = CoinChooserPrivacy(enable_output_value_rounding=True)
 
@@ -103,6 +108,7 @@ class TestCoinChooser(ElectrumTestCase):
             inputs=[self.get_dummy_txin_1_284_474_sat()] ,
             outputs=[self.get_dummy_txout_1(1_000_000)],
             change_addrs=[],
+            keystore=None,
             fee_estimator_vb=fee_estimator,
             dust_threshold=500,
         )

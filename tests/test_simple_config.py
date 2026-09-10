@@ -1,4 +1,4 @@
-import ast
+import json
 import sys
 import os
 import tempfile
@@ -109,8 +109,11 @@ class Test_SimpleConfig(ElectrumTestCase):
         contents = None
         with open(os.path.join(self.electrum_dir, "config"), "r") as f:
             contents = f.read()
-        result = ast.literal_eval(contents)
+        result = json.loads(contents)
         result.pop('config_version', None)
+        # Config migration can add plugin defaults; this test is specifically
+        # about ensuring command-line-only options are not persisted.
+        result.pop('plugins', None)
         self.assertEqual({"something": "a"}, result)
 
     def test_configvars_set_and_get(self):
@@ -165,11 +168,9 @@ class Test_SimpleConfig(ElectrumTestCase):
         config = SimpleConfig(self.options)
         self.assertEqual(60, config.CLI_TIMEOUT)
         assert isinstance(config.CLI_TIMEOUT, float)
-
         config.CLI_TIMEOUT = 10
         self.assertEqual(10, config.CLI_TIMEOUT)
         assert isinstance(config.CLI_TIMEOUT, float)
-
         config.CLI_TIMEOUT = None
         self.assertEqual(60, config.CLI_TIMEOUT)
         assert isinstance(config.CLI_TIMEOUT, float)
@@ -178,32 +179,25 @@ class Test_SimpleConfig(ElectrumTestCase):
         config = SimpleConfig(self.options)
         self.assertEqual(MAX_MSG_SIZE_DEFAULT, config.NETWORK_MAX_INCOMING_MSG_SIZE)
         self.assertFalse(config.cv.NETWORK_MAX_INCOMING_MSG_SIZE.is_set())
-
         config.NETWORK_MAX_INCOMING_MSG_SIZE = 5_555_555
         self.assertTrue(config.cv.NETWORK_MAX_INCOMING_MSG_SIZE.is_set())
-
         config.NETWORK_MAX_INCOMING_MSG_SIZE = None
         self.assertFalse(config.cv.NETWORK_MAX_INCOMING_MSG_SIZE.is_set())
         self.assertEqual(MAX_MSG_SIZE_DEFAULT, config.NETWORK_MAX_INCOMING_MSG_SIZE)
-
         config.NETWORK_MAX_INCOMING_MSG_SIZE = MAX_MSG_SIZE_DEFAULT
         self.assertTrue(config.cv.NETWORK_MAX_INCOMING_MSG_SIZE.is_set())
         self.assertEqual(MAX_MSG_SIZE_DEFAULT, config.NETWORK_MAX_INCOMING_MSG_SIZE)
 
     def test_configvars_is_modifiable(self):
         config = SimpleConfig({**self.options, "server": "example.com:443:s"})
-
         self.assertFalse(config.is_modifiable("server"))
         self.assertFalse(config.cv.NETWORK_SERVER.is_modifiable())
-
         config.NETWORK_SERVER = "other-example.com:80:t"
         self.assertEqual("example.com:443:s", config.NETWORK_SERVER)
-
         self.assertEqual(MAX_MSG_SIZE_DEFAULT, config.NETWORK_MAX_INCOMING_MSG_SIZE)
         self.assertTrue(config.cv.NETWORK_MAX_INCOMING_MSG_SIZE.is_modifiable())
         config.NETWORK_MAX_INCOMING_MSG_SIZE = 5_555_555
         self.assertEqual(5_555_555, config.NETWORK_MAX_INCOMING_MSG_SIZE)
-
         config.make_key_not_modifiable(config.cv.NETWORK_MAX_INCOMING_MSG_SIZE)
         self.assertFalse(config.cv.NETWORK_MAX_INCOMING_MSG_SIZE.is_modifiable())
         config.NETWORK_MAX_INCOMING_MSG_SIZE = 2_222_222
@@ -235,7 +229,6 @@ class TestUserConfig(ElectrumTestCase):
         self._saved_stdout = sys.stdout
         self._stdout_buffer = StringIO()
         sys.stdout = self._stdout_buffer
-
         self.user_dir = tempfile.mkdtemp()
 
     def tearDown(self):

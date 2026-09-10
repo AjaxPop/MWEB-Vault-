@@ -11,7 +11,7 @@ from .lnaddr import lndecode, LnDecodeException
 
 # note: when checking against these, use .lower() to support case-insensitivity
 BITCOIN_BIP21_URI_SCHEME = 'litecoin'
-LIGHTNING_URI_SCHEME = 'lightningltc'
+LIGHTNING_URI_SCHEME = 'lightning'
 
 
 class InvalidBitcoinURI(Exception):
@@ -85,11 +85,11 @@ def parse_bip21_URI(uri: str) -> dict:
             out['sig'] = bitcoin.base_decode(out['sig'], base=58).hex()
         except Exception as e:
             raise InvalidBitcoinURI(f"failed to parse 'sig' field: {repr(e)}") from e
-    if 'lightningltc' in out:
+    if 'lightning' in out:
         try:
-            lnaddr = lndecode(out['lightningltc'])
+            lnaddr = lndecode(out['lightning'])
         except LnDecodeException as e:
-            raise InvalidBitcoinURI(f"Failed to decode 'lightningltc' field: {e!r}") from e
+            raise InvalidBitcoinURI(f"Failed to decode 'lightning' field: {e!r}") from e
         amount_sat = out.get('amount')
         if amount_sat:
             # allow small leeway due to msat precision

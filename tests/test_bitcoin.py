@@ -216,8 +216,8 @@ class Test_bitcoin(ElectrumTestCase):
         sig1_b64 = base64.b64encode(sig1)
         sig2_b64 = base64.b64encode(sig2)
 
-        self.assertEqual(sig1_b64, b'IHGAMaPxjrn3CD19S7J5KAq4xF6mdLznsSL8SrqhNwficUHlK5wSth6/JiZ/pEyo92nkUoA+kL9VJpjLnKJKTmM=')
-        self.assertEqual(sig2_b64, b'G14KtfFZQYjyhz4PUzX/yz8eEC1BFHsaEKZOJGLeTWJoNp/umpi5zPeCvhUcgSoMtAkmw3pATrM2bcDdYi1tqIs=')
+        self.assertEqual(sig1_b64, b'ICzNsKuXKK99r36McDcxN8YpB3Bwe+wZpCIeiSCIv0IMMdY1gFymqipODrpO5E9qff3+qtqib7X8zOKQKiGD5pA=')
+        self.assertEqual(sig2_b64, b'G2grUCKF3JD3xmtvh6AK9u6NUEKvQazaZWKk51VKp18vPwvkm9Wz0Nu+5V9JT6nXOZn8/XrRMmKaU0QrtzJOGng=')
 
         self.assertTrue(bitcoin.verify_usermessage_with_address(addr1, sig1, msg1))
         self.assertTrue(bitcoin.verify_usermessage_with_address(addr2, sig2, msg2))
@@ -227,9 +227,9 @@ class Test_bitcoin(ElectrumTestCase):
 
     def test_signmessage_low_s(self):
         """`$ bitcoin-cli verifymessage` does NOT enforce the low-S rule for ecdsa sigs. This tests we do the same."""
-        addr = "15hETetDmcXm1mM4sEf7U2KXC9hDHFMSzz"
-        sig_low_s = b'Hzsu0U/THAsPz/MSuXGBKSULz2dTfmrg1NsAhFp+wH5aKfmX4Db7ExLGa7FGn0m6Mf43KsbEOWpvUUUBTM3Uusw='
-        sig_high_s = b'IDsu0U/THAsPz/MSuXGBKSULz2dTfmrg1NsAhFp+wH5a1gZoH8kE7O05lE65YLZFzLx3sh/rDzXMbo1dQAJhhnU='
+        addr = "LPvBisC3rGmpGa3E3NeQk3PHQN4VS237y2"
+        sig_low_s = b'ICzNsKuXKK99r36McDcxN8YpB3Bwe+wZpCIeiSCIv0IMMdY1gFymqipODrpO5E9qff3+qtqib7X8zOKQKiGD5pA='
+        sig_high_s = b'HyzNsKuXKK99r36McDcxN8YpB3Bwe+wZpCIeiSCIv0IMzinKf6NZVdWx8UWxG7CVgLywMgwM2Oo+8u/OYq6yWrE='
         msg = b'Chancellor on brink of second bailout for banks'
         self.assertTrue(bitcoin.verify_usermessage_with_address(address=addr, sig65=base64.b64decode(sig_low_s), message=msg))
         self.assertTrue(bitcoin.verify_usermessage_with_address(address=addr, sig65=base64.b64decode(sig_high_s), message=msg))
@@ -239,13 +239,13 @@ class Test_bitcoin(ElectrumTestCase):
         # p2wpkh-p2sh
         sig1 = self.sign_message_with_wif_privkey("p2wpkh-p2sh:T7Swnz5d7C5eczM5TPkFSPuBdCJDiTZK2MCkjU5ZZTU8u4z4cHWn", msg)
         addr1 = "MKkwVip3KDUb2WFJqr8bGebGPHNAXwGG1f"
-        self.assertEqual(base64.b64encode(sig1), b'H3nh1AqVvauwclOAPs2serBtro9Iei1Q7vZZfmivo6ioQ6EzNYq5No90CU5RXM17d05eO+bXd0p/r/Sl5fPz390=')
+        self.assertEqual(base64.b64encode(sig1), b'IHy4YwzlygjztfZnLoKZVLaKHFUijI1bJNX9oaE7JufBN2ZUJR4y4fp7g4dDb8+qkhJGB0HRiAViE+qDH9zoSRc=')
         self.assertTrue(bitcoin.verify_usermessage_with_address(addr1, sig1, msg))
         self.assertFalse(bitcoin.verify_usermessage_with_address(addr1, sig1, b'heyheyhey'))
         # p2wpkh
         sig2 = self.sign_message_with_wif_privkey("p2wpkh:T7Swnz5d7C5eczM5TPkFSPuBdCJDiTZK2MCkjU5ZZTU8u4z4cHWn", msg)
         addr2 = "ltc1qq2tmmcngng78nllq2pvrkchcdukemtj57q7cpl"
-        self.assertEqual(base64.b64encode(sig2), b'H3nh1AqVvauwclOAPs2serBtro9Iei1Q7vZZfmivo6ioQ6EzNYq5No90CU5RXM17d05eO+bXd0p/r/Sl5fPz390=')
+        self.assertEqual(base64.b64encode(sig2), b'IHy4YwzlygjztfZnLoKZVLaKHFUijI1bJNX9oaE7JufBN2ZUJR4y4fp7g4dDb8+qkhJGB0HRiAViE+qDH9zoSRc=')
         self.assertTrue(bitcoin.verify_usermessage_with_address(addr2, sig2, msg))
         self.assertFalse(bitcoin.verify_usermessage_with_address(addr2, sig2, b'heyheyhey'))
 
@@ -256,15 +256,15 @@ class Test_bitcoin(ElectrumTestCase):
         tests from https://github.com/trezor/trezor-firmware/blob/2ce1e6ba7dbe5bbaeeb336fff0a038e59cb40ef8/tests/device_tests/bitcoin/test_signmessage.py#L39
         """
         msg = b"This is an example of a signed message."
-        addr1 = "MS2NsKymog9TrEVq4wbrjn1oYS7MiPDkqR"
-        addr2 = "ltc1qnw6a545d64e94r4vts80n89nmcpud5fdftvryq"
-        sig1 = bytes.fromhex("23744de4516fac5c140808015664516a32fead94de89775cec7e24dbc24fe133075ac09301c4cc8e197bea4b6481661d5b8e9bf19d8b7b8a382ecdb53c2ee0750d")
-        sig2 = bytes.fromhex("28b55d7600d9e9a7e2a49155ddf3cfdb8e796c207faab833010fa41fb7828889bc47cf62348a7aaa0923c0832a589fab541e8f12eb54fb711c90e2307f0f66b194")
+        addr1 = "MKkwVip3KDUb2WFJqr8bGebGPHNAXwGG1f"
+        addr2 = "ltc1qq2tmmcngng78nllq2pvrkchcdukemtj57q7cpl"
+        sig1 = bytes.fromhex("24d3ee707f82dee697957009a75802c6a2edb58f5b0b407aafbc55b98e6d8356590c24a081c9014be1da50f14392d700a9eea6255fafc4236a5094bfcdcd404f1f")
+        sig2 = bytes.fromhex("28d3ee707f82dee697957009a75802c6a2edb58f5b0b407aafbc55b98e6d8356590c24a081c9014be1da50f14392d700a9eea6255fafc4236a5094bfcdcd404f1f")
         self.assertTrue(bitcoin.verify_usermessage_with_address(address=addr1, sig65=sig1, message=msg))
         self.assertTrue(bitcoin.verify_usermessage_with_address(address=addr2, sig65=sig2, message=msg))
         # if there is type information in the header of the sig (first byte), enforce that:
-        sig1_wrongtype = bytes.fromhex("27744de4516fac5c140808015664516a32fead94de89775cec7e24dbc24fe133075ac09301c4cc8e197bea4b6481661d5b8e9bf19d8b7b8a382ecdb53c2ee0750d")
-        sig2_wrongtype = bytes.fromhex("24b55d7600d9e9a7e2a49155ddf3cfdb8e796c207faab833010fa41fb7828889bc47cf62348a7aaa0923c0832a589fab541e8f12eb54fb711c90e2307f0f66b194")
+        sig1_wrongtype = sig2
+        sig2_wrongtype = sig1
         self.assertFalse(bitcoin.verify_usermessage_with_address(address=addr1, sig65=sig1_wrongtype, message=msg))
         self.assertFalse(bitcoin.verify_usermessage_with_address(address=addr2, sig65=sig2_wrongtype, message=msg))
 
@@ -528,7 +528,7 @@ class Test_bitcoin(ElectrumTestCase):
             self.assertFalse(is_address('bc1gmk9yu', net=net))
 
         # bech32(m) mixed case:
-        bech32_mixed_case1 = 'BC1QW508D6QEJXTDG4Y5R3zarvary0c5xw7kv8f3t4'
+        bech32_mixed_case1 = 'LTC1QW508D6QEJXTDG4Y5R3zarvary0c5xw7kgmn4n9'
         self.assertFalse(is_address(bech32_mixed_case1))
         self.assertTrue(is_address(bech32_mixed_case1.lower()))
         self.assertTrue(is_address(bech32_mixed_case1.upper()))
@@ -894,6 +894,7 @@ class Test_xprv_xpub(ElectrumTestCase):
             'p2wsh-p2sh':  'Yprv',
             'p2wpkh':      'zprv',
             'p2wsh':       'Zprv',
+            'mweb':        'nprv' if constants.net.TESTNET else 'mprv',
         }
         xpub_headers_b58 = {
             'standard':    'xpub',
@@ -901,6 +902,8 @@ class Test_xprv_xpub(ElectrumTestCase):
             'p2wsh-p2sh':  'Ypub',
             'p2wpkh':      'zpub',
             'p2wsh':       'Zpub',
+            'p2wpkh2':     'Ltub',
+            'mweb':        'npub' if constants.net.TESTNET else 'mpub',
         }
         for xtype, xkey_header_bytes in constants.net.XPRV_HEADERS.items():
             xkey_header_bytes = bfh("%08x" % xkey_header_bytes)
@@ -933,6 +936,7 @@ class Test_xprv_xpub_testnet(ElectrumTestCase):
             'p2wsh-p2sh':  'Uprv',
             'p2wpkh':      'vprv',
             'p2wsh':       'Vprv',
+            'mweb':        'nprv',
         }
         xpub_headers_b58 = {
             'standard':    'tpub',
@@ -940,6 +944,7 @@ class Test_xprv_xpub_testnet(ElectrumTestCase):
             'p2wsh-p2sh':  'Upub',
             'p2wpkh':      'vpub',
             'p2wsh':       'Vpub',
+            'mweb':        'npub',
         }
         for xtype, xkey_header_bytes in constants.net.XPRV_HEADERS.items():
             xkey_header_bytes = bfh("%08x" % xkey_header_bytes)
@@ -1192,7 +1197,14 @@ class TestTaprootHelpers(ElectrumTestCase):
             internal_pubkey = bfh(tcase["given"]["internalPubkey"])
             spk = taproot_output_script(internal_pubkey, script_tree=script_tree)
             self.assertEqual(bfh(tcase["expected"]["scriptPubKey"]), spk)
-            self.assertEqual(tcase["expected"]["bip350Address"], bitcoin.script_to_address(spk))
+            expected_witver, expected_witprog = segwit_addr.decode_segwit_address(
+                "bc", tcase["expected"]["bip350Address"]
+            )
+            self.assertIsNotNone(expected_witprog)
+            expected_ltc_address = segwit_addr.encode_segwit_address(
+                constants.net.SEGWIT_HRP, expected_witver, bytes(expected_witprog)
+            )
+            self.assertEqual(expected_ltc_address, bitcoin.script_to_address(spk))
             if script_tree:
                 flat_tree = flatten_tree(script_tree)
                 for script_num, jcontrol_block in enumerate(tcase["expected"]["scriptPathControlBlocks"]):

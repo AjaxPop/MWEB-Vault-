@@ -154,8 +154,12 @@ class TestCommands(ElectrumTestCase):
     async def test_verifymessage_enforces_strict_base64(self):
         cmds = Commands(config=self.config)
         msg = "hello there"
-        addr = "bc1qq2tmmcngng78nllq2pvrkchcdukemtj56uyue0"
-        sig = "HznHvCsY//Zr5JvPIR3rN/RbCkttvrUs8Yt+vw+e1c29BLMSlcrN4+Y4Pq8e/UJuh2bDrUboTfsFhBJap+fPmNY="
+        wallet_obj = restore_wallet_from_text__for_unittest(
+            'p2wpkh:TAgoypi14k5Y54svysG62xp5QFRWiF1W64zxaFRFPo2jMPSMoa5D',
+            path=None,
+            config=self.config)['wallet']
+        addr = "ltc1q9pzjpjq4nqx5ycnywekcmycqz0wjp2nq7n0qjr"
+        sig = await cmds.signmessage(addr, msg, wallet=wallet_obj)
         self.assertTrue(await cmds.verifymessage(addr, sig, msg))
         self.assertFalse(await cmds.verifymessage(addr, sig+"trailinggarbage", msg))
 
@@ -625,6 +629,7 @@ class TestCommandsTestnet(ElectrumTestCase):
                     'inputs': [
                         {
                             'coinbase': False,
+                            'pegout': False,
                             'nsequence': 4294967293,
                             'prevout_hash': 'd42f6de015d93e6cd573ec8ae5ef6f87c4deb3763b0310e006d26c30d8800c67',
                             'prevout_n': 0,
@@ -636,8 +641,8 @@ class TestCommandsTestnet(ElectrumTestCase):
                         }
                     ],
                     'outputs': [
-                        {'address': 'tb1qr5mf6sumdlhjrq9t6wlyvdm960zu0n0t5d60ug', 'value_sat': 500000},
-                        {'address': 'tb1qp3p2d72gj2l7r6za056tgu4ezsurjphper4swh', 'value_sat': 762100}
+                        {'address': 'tltc1qr5mf6sumdlhjrq9t6wlyvdm960zu0n0td9c3vp', 'value_sat': 500000},
+                        {'address': 'tltc1qp3p2d72gj2l7r6za056tgu4ezsurjphpqthw77', 'value_sat': 762100}
                     ],
                 }
             )
@@ -744,7 +749,6 @@ class TestCommandsTestnet(ElectrumTestCase):
         preimage = os.urandom(32)
         payment_hash = sha256(preimage)
         w.lnworker.save_preimage(payment_hash, preimage)
-
         assert await cmds.export_lightning_preimage(payment_hash=payment_hash.hex(), wallet=w) == preimage.hex()
         assert await cmds.export_lightning_preimage(payment_hash=os.urandom(32).hex(), wallet=w) is None
 
