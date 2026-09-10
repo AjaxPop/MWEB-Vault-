@@ -172,7 +172,11 @@ class ElectrumTestCase(unittest.IsolatedAsyncioTestCase, Logger):
         # Wallet files can be an initial JSON document followed by newline-delimited
         # JSON-patch entries. Work on JSON string tokens in the raw text so the
         # journal, tx hex, hashes, keys, and other historical material stay intact.
-        json_string_re = re.compile(r'"([^"\]*(?:\.[^"\]*)*)"')
+        escaped_backslash = re.escape(chr(92))
+        json_string_re = re.compile(
+            '"' + '([^"' + escaped_backslash + ']*(?:'
+            + escaped_backslash + '.[^"' + escaped_backslash + ']*)*)' + '"'
+        )
 
         def convert_json_string(match):
             value = match.group(1)
