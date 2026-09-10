@@ -318,7 +318,15 @@ class TestStorageUpgrade(WalletTestCase):
         # some labels, frozen addresses, saved local txs, invoices/requests, etc. The file also has partial writes.
         # Also, regression test for #8913
         wallet_str = self._get_wallet_str()
-        await self._upgrade_storage(wallet_str)
+        # Preserve the original signed Bitcoin-testnet BOLT11 invoices in this
+        # historical migration fixture. The HRP is part of the invoice signature,
+        # so rewriting lntb to lntltc would invalidate the artifact.
+        old_bolt11_hrp = constants.BitcoinTestnet.BOLT11_HRP
+        try:
+            constants.BitcoinTestnet.BOLT11_HRP = "tb"
+            await self._upgrade_storage(wallet_str)
+        finally:
+            constants.BitcoinTestnet.BOLT11_HRP = old_bolt11_hrp
 
 ##########
 
