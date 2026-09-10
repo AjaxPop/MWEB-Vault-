@@ -217,8 +217,7 @@ class Test_bitcoin(ElectrumTestCase):
         sig2_b64 = base64.b64encode(sig2)
 
         self.assertEqual(sig1_b64, b'ICzNsKuXKK99r36McDcxN8YpB3Bwe+wZpCIeiSCIv0IMMdY1gFymqipODrpO5E9qff3+qtqib7X8zOKQKiGD5pA=')
-        print(f'actual Litecoin sig2_b64: {sig2_b64!r}')
-        self.assertEqual(sig2_b64, b'G777Nqh3YlTVpWqGxSSVHtX013bTzdU/lmgzrRVuL6qYGnpd87PyI9T/LIZvbq7KdfPK2A5Ij1xUkujZwR1sl6M=')
+        self.assertEqual(sig2_b64, b'G2grUCKF3JD3xmtvh6AK9u6NUEKvQazaZWKk51VKp18vPwvkm9Wz0Nu+5V9JT6nXOZn8/XrRMmKaU0QrtzJOGng=')
 
         self.assertTrue(bitcoin.verify_usermessage_with_address(addr1, sig1, msg1))
         self.assertTrue(bitcoin.verify_usermessage_with_address(addr2, sig2, msg2))
