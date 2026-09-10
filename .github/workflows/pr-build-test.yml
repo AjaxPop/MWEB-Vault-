@@ -72,4 +72,4 @@ jobs:
           python -m compileall -q electrum
 
       - name: Run unit tests
-        run: pytest tests -vv --maxfail=20
+        run: pytest tests -q --tb=short --maxfail=1
