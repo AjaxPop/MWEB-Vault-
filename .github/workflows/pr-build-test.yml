@@ -22,47 +22,35 @@ jobs:
           ref: ci-build-mwebd
           fetch-depth: 0
 
-      - name: Apply fixture scanner fix
+      - name: Apply historical BOLT11 fixture compatibility
         if: github.event_name == 'push'
         shell: bash
         run: |
           python <<'PY'
           from pathlib import Path
 
-          path = Path("tests/__init__.py")
+          path = Path("tests/test_storage_upgrade.py")
           text = path.read_text(encoding="utf-8")
-          marker = "escaped_backslash = re.escape(chr(92))"
+          marker = 'old_bolt11_hrp = constants.BitcoinTestnet.BOLT11_HRP'
           if marker not in text:
-              lines = text.splitlines(keepends=True)
-              matches = [
-                  i for i, line in enumerate(lines)
-                  if line.strip().startswith("json_string_re = re.compile(")
-              ]
-              if len(matches) != 1:
+              old = '''        wallet_str = self._get_wallet_str()\n        await self._upgrade_storage(wallet_str)\n\n##########\n'''
+              new = '''        wallet_str = self._get_wallet_str()\n        # Preserve the original signed Bitcoin-testnet BOLT11 invoices in this\n        # historical migration fixture. The HRP is part of the invoice signature,\n        # so rewriting lntb to lntltc would invalidate the artifact.\n        old_bolt11_hrp = constants.BitcoinTestnet.BOLT11_HRP\n        try:\n            constants.BitcoinTestnet.BOLT11_HRP = "tb"\n            await self._upgrade_storage(wallet_str)\n        finally:\n            constants.BitcoinTestnet.BOLT11_HRP = old_bolt11_hrp\n\n##########\n'''
+              if text.count(old) != 1:
                   raise SystemExit(
-                      f"expected exactly one json_string_re assignment, found {len(matches)}"
+                      f"expected exactly one target upgrade block, found {text.count(old)}"
                   )
-              i = matches[0]
-              indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
-              lines[i:i + 1] = [
-                  f"{indent}escaped_backslash = re.escape(chr(92))\n",
-                  f"{indent}json_string_re = re.compile(\n",
-                  f"{indent}    '\"' + '([^\"' + escaped_backslash + ']*(?:'\n",
-                  f"{indent}    + escaped_backslash + '.[^\"' + escaped_backslash + ']*)*)' + '\"'\n",
-                  f"{indent})\n",
-              ]
-              path.write_text("".join(lines), encoding="utf-8")
+              path.write_text(text.replace(old, new), encoding="utf-8")
           PY
 
-          python -m py_compile tests/__init__.py
+          python -m py_compile tests/test_storage_upgrade.py
           git diff --check
 
-          if ! git diff --quiet -- tests/__init__.py; then
+          if ! git diff --quiet -- tests/test_storage_upgrade.py; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add tests/__init__.py
+            git add tests/test_storage_upgrade.py
             git diff --cached --check
-            git commit -m "tests: fix historical wallet fixture scanner regex"
+            git commit -m "tests: preserve historical BOLT11 invoice during upgrade"
             git push origin HEAD:ci-build-mwebd
           fi
 
